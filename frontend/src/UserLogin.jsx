@@ -38,7 +38,7 @@ const UserLogin = () => {
         {!isAdmin ? (
           <>
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-2xl font-extrabold text-green-700 text-center">Login</h2>
+              <h2 className="text-4xl font-extrabold text-green-700 text-center">Login</h2>
               <button
                 type="button"
                 className="px-4 py-1 rounded-lg bg-green-100 text-green-700 font-semibold text-sm shadow hover:bg-green-200 transition"
@@ -83,7 +83,7 @@ const UserLogin = () => {
         ) : (
           <>
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-2xl font-extrabold text-green-700 text-center">Admin Login</h2>
+              <h2 className="text-4xl font-extrabold text-green-700 text-center">Admin Login</h2>
               <button
                 type="button"
                 className="px-4 py-1 rounded-lg bg-green-100 text-green-700 font-semibold text-sm shadow hover:bg-green-200 transition"
