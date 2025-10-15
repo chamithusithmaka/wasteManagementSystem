@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom';
 
 /**
  * WasteCollection (User dashboard)
@@ -71,18 +72,35 @@ const HistoryRow = ({ row }) => (
 );
 
 const WasteCollection = () => {
-  // analytics computed from data - useMemo for performance
-  const analytics = useMemo(() => {
-    const upcoming = samplePickups.length;
-    const completedThisMonth = sampleHistory.filter(h => h.status === 'Completed' && new Date(h.date).getMonth() === new Date().getMonth()).length;
-    // fake average fill level from last 5 collections (0-100)
-    const fillSamples = [45, 60, 50, 70, 55];
-    const avgFill = Math.round(fillSamples.reduce((s, v) => s + v, 0) / fillSamples.length);
-    const rewards = 250; // example user points
-    return { upcoming, completedThisMonth, avgFill, rewards };
+  const [localPickups, setLocalPickups] = useState([]);
+
+  // load any user-scheduled pickups from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('userPickups');
+      setLocalPickups(raw ? JSON.parse(raw) : []);
+    } catch {
+      setLocalPickups([]);
+    }
   }, []);
 
-  // small user-oriented analysis text
+  // analytics computed from data - useMemo for performance
+  const analytics = useMemo(() => {
+    const upcoming = (localPickups.length + samplePickups.length);
+    const allHistory = sampleHistory; // keep history separate in sample; swap with API later
+    const completedThisMonth = allHistory.filter(h => h.status === 'Completed' && new Date(h.date).getMonth() === new Date().getMonth()).length;
+    const fillSamples = [45, 60, 50, 70, 55];
+    const avgFill = Math.round(fillSamples.reduce((s, v) => s + v, 0) / fillSamples.length);
+    const rewards = 250;
+    return { upcoming, completedThisMonth, avgFill, rewards };
+  }, [localPickups]);
+
+  // combine user pickups (new first) and sample pickups for display
+  const displayPickups = useMemo(() => {
+    // normalize user pickups shape if necessary
+    return [...(localPickups || []), ...samplePickups];
+  }, [localPickups]);
+
   const analysis = [
     `You have ${analytics.upcoming} scheduled pickup(s) in the next 7 days.`,
     analytics.completedThisMonth
@@ -110,11 +128,25 @@ const WasteCollection = () => {
         <div className="bg-white rounded-2xl p-6 shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-green-700">Upcoming Pickups</h2>
-            <button className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-lg hover:bg-green-100">Schedule New</button>
+
+            {/* Navigation button: opens new page (only link in this file as requested) */}
+            <Link
+              to="/waste-collection/schedule"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-green-700 to-green-500 shadow hover:scale-[1.02] transform transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" stroke="white" strokeLinecap="round" strokeLinejoin="round"></path>
+              </svg>
+              Schedule New
+            </Link>
           </div>
 
           <div className="space-y-2">
-            {samplePickups.map(p => <PickupItem key={p.id} pickup={p} />)}
+            {displayPickups.map(p => (
+              <div key={p.id ?? `${p.type}-${p.date}-${p.time}`} className="animate-fade-up">
+                <PickupItem pickup={p} />
+              </div>
+            ))}
           </div>
 
           <div className="mt-6 text-sm text-gray-600">
