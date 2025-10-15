@@ -6,11 +6,15 @@ import UserLogin from './UserLogin';
 import UserSignup from './UserSignup';
 import PaymentsPage from './pages/PaymentsPage';
 import Layout from './components/Layout';
+import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import WasteCollection from './pages/WasteCollection';
 import WasteLevel from './pages/WasteLevel';
 import Payments from './pages/Payments';
 import Profile from './pages/Profile';
+import ReportGenerationPage from './pages/ReportGenerationPage';
+import ReportVisualizationPage from './pages/ReportVisualizationPage';
 
 import { UserProvider } from './context/UserContext';
 
@@ -51,7 +55,23 @@ function App() {
               <Profile />
             </Layout>
           } />
+          <Route path="/report-generation" element={
+            <AdminLayout>
+              <ReportGenerationPage />
+            </AdminLayout>
+          } />
+          <Route path="/report-visualization" element={
+            <AdminLayout>
+              <ReportVisualizationPage />
+            </AdminLayout>
+          } />
+          <Route path="/admin-dashboard" element={
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
+          } />
         </Routes>
+
       </BrowserRouter>
     </UserProvider>
   );
