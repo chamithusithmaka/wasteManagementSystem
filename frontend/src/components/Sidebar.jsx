@@ -68,9 +68,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Sidebar */}
       <div className="relative flex flex-col h-full bg-white shadow-xl w-64 z-30">
         {/* Logo */}
-        <div className="py-5 px-3 flex items-center justify-between bg-gradient-to-r from-green-700 to-green-500">
+        <div className="h-16 px-3 flex items-center justify-between bg-gradient-to-r from-green-700 to-green-500">
           <div className="flex items-center">
-            <img src={logo} alt="UrbanWasteX logo" className="h-20 w-20 object-contain" />
+            <img src={logo} alt="UrbanWasteX logo" className="h-10 w-10 object-contain" />
             <span className="ml-2 text-xl font-bold text-white">UrbanWasteX</span>
           </div>
           <button 
