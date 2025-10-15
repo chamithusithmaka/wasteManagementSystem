@@ -18,7 +18,8 @@ const UserLogin = () => {
       return;
     }
     setError('');
-    alert('Login successful!');
+    // Redirect to dashboard after successful login
+    navigate('/dashboard');
   };
 
   const handleAdminLogin = (e) => {
@@ -28,7 +29,8 @@ const UserLogin = () => {
       return;
     }
     setAdminError('');
-    alert('Admin login successful!');
+    // Redirect admin to dashboard after successful login
+    navigate('/dashboard');
   };
 
   return (
