@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from './Sidebar';
+import AdminSidebar from './AdminSidebar';
 
-const Layout = ({ children }) => {
+const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -43,8 +43,7 @@ const Layout = ({ children }) => {
   return (
     <div className="flex h-screen bg-green-50">
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      
+      <AdminSidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       {/* Main Content */}
       <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
         {/* Top Navigation */}
@@ -61,10 +60,9 @@ const Layout = ({ children }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-                <h1 className="text-xl font-bold text-green-700 ml-2 md:ml-0">Waste Management System</h1>
+                <h1 className="text-xl font-bold text-green-700 ml-2 md:ml-0">Admin Dashboard</h1>
               </div>
-              
-              {/* User profile */}
+              {/* Admin profile */}
               <div className="flex items-center relative" ref={dropdownRef}>
                 {user && (
                   <span className="text-sm text-gray-700 mr-2">{user.username}</span>
@@ -82,7 +80,7 @@ const Layout = ({ children }) => {
                     <div className="font-bold text-green-700 text-lg mb-2">Profile</div>
                     <div className="mb-1"><span className="font-semibold">Username:</span> {user.username}</div>
                     <div className="mb-1"><span className="font-semibold">Name:</span> {user.name}</div>
-                    <div className="mb-1"><span className="font-semibold">Email:</span> {user.email}</div>
+                    <div className="mb-1"><span className="font-semibold">Email:</span> <span className="break-words truncate max-w-xs inline-block align-bottom" title={user.email}>{user.email}</span></div>
                     <div className="mb-1"><span className="font-semibold">Role:</span> {user.role}</div>
                   </div>
                 )}
@@ -90,7 +88,6 @@ const Layout = ({ children }) => {
             </div>
           </div>
         </header>
-        
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
@@ -100,4 +97,4 @@ const Layout = ({ children }) => {
   );
 };
 
-export default Layout;
+export default AdminLayout;
