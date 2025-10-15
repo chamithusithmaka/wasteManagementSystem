@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
 import UserLogin from './UserLogin';
 import UserSignup from './UserSignup';
-import BinFullToSchedule from './TestingPurpose/pages/BinFullToSchedule';
+
 import PaymentsPage from './pages/PaymentsPage';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -20,7 +20,7 @@ function App() {
         {/* Auth routes */}
         <Route path="/" element={<UserLogin />} />
         <Route path="/signup" element={<UserSignup />} />
-        <Route path="/bin-full-to-schedule" element={<BinFullToSchedule />} />
+ 
         <Route path="/payments" element={<PaymentsPage />} />
         
         {/* Protected routes with sidebar layout */}
