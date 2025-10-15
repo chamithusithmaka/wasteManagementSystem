@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid'; // Make sure to install this
+import { v4 as uuidv4 } from 'uuid';
+import Layout from '../components/Layout'; // <-- Import Layout
 import HeaderBar from '../components/payments/HeaderBar';
 import BillsCard from '../components/payments/BillsCard';
 import RewardsCard from '../components/payments/RewardsCard';
@@ -172,63 +173,65 @@ const PaymentsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
+    <Layout>
+      <div className="min-h-screen bg-gray-50 pb-10">
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+        <HeaderBar
+          title="Payments & Rewards"
+          wallet={wallet}
+          onAddFunds={() => setShowAddWallet(true)}
         />
-      )}
-      <HeaderBar
-        title="Payments & Rewards"
-        wallet={wallet}
-        onAddFunds={() => setShowAddWallet(true)}
-      />
-      <div className="max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
-        <BillsCard
-          bills={bills}
-          selectedBillIds={selectedBillIds}
-          onSelectBill={handleSelectBill}
-          onSelectAll={handleSelectAll}
-          onPayAll={handlePayAll}
+        <div className="max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
+          <BillsCard
+            bills={bills}
+            selectedBillIds={selectedBillIds}
+            onSelectBill={handleSelectBill}
+            onSelectAll={handleSelectAll}
+            onPayAll={handlePayAll}
+          />
+          <RewardsCard rewards={rewards} />
+        </div>
+        <div className="max-w-6xl mx-auto mt-8 px-4">
+          <TransactionsCard
+            transactions={transactions}
+            onViewReceipt={handleViewReceipt}
+          />
+        </div>
+        <AddWalletModal
+          isOpen={showAddWallet}
+          onClose={() => setShowAddWallet(false)}
+          onAddFunds={handleAddFunds}
         />
-        <RewardsCard rewards={rewards} />
+        <CheckoutModal
+          isOpen={showCheckout}
+          onClose={() => setShowCheckout(false)}
+          selectedBills={bills.filter((b) => selectedBillIds.includes(b.id))}
+          wallet={wallet}
+          rewards={rewards}
+          applyRewards={applyRewards}
+          setApplyRewards={setApplyRewards}
+          useWalletFirst={useWalletFirst}
+          setUseWalletFirst={setUseWalletFirst}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
+          checkoutStatus={checkoutStatus}
+          onPayNow={handlePayNow}
+          receipt={checkoutReceipt}
+          onViewReceipt={handleCheckoutSuccess}
+        />
+        <ReceiptDrawer
+          isOpen={showReceipt}
+          onClose={() => setShowReceipt(false)}
+          receipt={activeReceipt}
+        />
       </div>
-      <div className="max-w-6xl mx-auto mt-8 px-4">
-        <TransactionsCard
-          transactions={transactions}
-          onViewReceipt={handleViewReceipt}
-        />
-      </div>
-      <AddWalletModal
-        isOpen={showAddWallet}
-        onClose={() => setShowAddWallet(false)}
-        onAddFunds={handleAddFunds}
-      />
-      <CheckoutModal
-  isOpen={showCheckout}
-  onClose={() => setShowCheckout(false)}
-  selectedBills={bills.filter((b) => selectedBillIds.includes(b.id))}
-  wallet={wallet}
-  rewards={rewards}
-  applyRewards={applyRewards}
-  setApplyRewards={setApplyRewards}
-  useWalletFirst={useWalletFirst}
-  setUseWalletFirst={setUseWalletFirst}
-  paymentMethod={paymentMethod}
-  setPaymentMethod={setPaymentMethod}   
-  checkoutStatus={checkoutStatus}
-  onPayNow={handlePayNow}
-  receipt={checkoutReceipt}
-  onViewReceipt={handleCheckoutSuccess}
-/>
-      <ReceiptDrawer
-        isOpen={showReceipt}
-        onClose={() => setShowReceipt(false)}
-        receipt={activeReceipt}
-      />
-    </div>
+    </Layout>
   );
 };
 
