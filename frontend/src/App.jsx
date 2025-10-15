@@ -8,8 +8,9 @@ import PaymentsPage from './pages/PaymentsPage';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
+import SchedulePickup from './pages/Waste-collection/SchedulePickup'; // added route component
 import AdminDashboard from './pages/AdminDashboard';
-import WasteCollection from './pages/WasteCollection';
+import WasteCollection from './pages/Waste-collection/WasteCollection';
 import WasteLevel from './pages/WasteLevel';
 import Payments from './pages/Payments';
 import Profile from './pages/Profile';
@@ -70,6 +71,11 @@ function App() {
               <AdminDashboard />
             </AdminLayout>
           } />
+          <Route path="/schedule-pickup" element={
+            <Layout>
+              <SchedulePickup />
+            </Layout>
+          } />  {/* added route */}
         </Routes>
 
       </BrowserRouter>
