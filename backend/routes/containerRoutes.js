@@ -9,8 +9,12 @@ const router = Router();
  */
 router.post("/", containerController.create);
 router.get("/", containerController.getAll);
+// Get containers by status: /api/containers/status/Available
+router.get("/status/:status", containerController.getByStatus);
 router.get("/:id", containerController.getById);
 router.put("/:id", containerController.update);
+// Update only address and city via location route
+router.put("/:id/location", containerController.sendLocation);
 router.delete("/:id", containerController.delete);
 
 export default router;

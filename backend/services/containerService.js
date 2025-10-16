@@ -40,6 +40,15 @@ class ContainerService {
   }
 
   /**
+   * Find a container by MongoDB ObjectId
+   * @param {String} id - MongoDB ObjectId
+   * @returns {Promise<Object|null>} Container document or null
+   */
+  async getContainerByMongoId(id) {
+    return await containerRepository.findById(id);
+  }
+
+  /**
    * Get all containers
    * @returns {Promise<Array>} Array of containers
    */
