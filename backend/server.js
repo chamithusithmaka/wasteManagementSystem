@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import walletRoutes from './routes/walletRoutes.js';
+import authRoutes from "./routes/authRoutes.js";
+import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js"; // Import waste collection routes
 
 dotenv.config(); // Load .env variables
 
@@ -19,6 +21,10 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("🚀 Express backend is running successfully!");
 });
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/waste-collection", wasteCollectionRoutes); // Add waste collection routes
 
 // Example test route (for CRUD later)
 app.get("/api/test", (req, res) => {
