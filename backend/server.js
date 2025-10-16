@@ -4,6 +4,8 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js"; // Import waste collection routes
+import containerRoutes from "./routes/containerRoutes.js";
+import { simulateSensorData } from "./utils/sensorSimulator.js";
 
 dotenv.config(); // Load .env variables
 
@@ -24,6 +26,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/waste-collection", wasteCollectionRoutes); // Add waste collection routes
+app.use("/api/containers", containerRoutes);
 
 // Example test route (for CRUD later)
 app.get("/api/test", (req, res) => {
