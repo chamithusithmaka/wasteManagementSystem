@@ -1,4 +1,5 @@
 import WasteCollectionRepository from '../repositories/wasteCollectionRepository.js';
+import WasteCollection from '../models/WasteCollection.js';
 
 class WasteCollectionService {
   // Create a new waste collection pickup
