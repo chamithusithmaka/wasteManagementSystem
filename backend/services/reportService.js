@@ -2,6 +2,7 @@
 // Responsible for data access and aggregation logic for reports.
 // Keeps controller free of DB implementation details (SRP).
 import WasteCollection from '../models/WasteCollection.js';
+import Container from '../models/Container.js';
 
 /**
  * Build a MongoDB match object from optional filters.
@@ -56,4 +57,38 @@ export const getCountsByStatus = async (filters = {}) => {
   return { counts, total };
 };
 
-export default { buildMatchFromFilters, getCountsByStatus };
+/**
+ * Returns sensor data counts grouped by status and total count.
+ * Uses MongoDB aggregation for Container collection.
+ */
+export const getSensorDataCountsByStatus = async () => {
+  const pipeline = [
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        status: '$_id',
+        count: 1,
+      },
+    },
+  ];
+
+  const rows = await Container.aggregate(pipeline).exec();
+
+  // Convert array of {status, count} into an object map
+  const counts = rows.reduce((acc, r) => {
+    acc[r.status] = r.count;
+    return acc;
+  }, {});
+
+  const total = rows.reduce((sum, r) => sum + r.count, 0);
+
+  return { counts, total };
+};
+
+export default { buildMatchFromFilters, getCountsByStatus, getSensorDataCountsByStatus };

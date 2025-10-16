@@ -73,9 +73,15 @@ const ReportVisualizationPage = () => {
   }, [params]);
 
   useEffect(() => {
-    // Fetch status counts from backend
+    // Fetch status counts from backend - conditional based on report type
     setLoadingStatus(true);
-    fetch('http://localhost:5000/api/reports/status-counts')
+    
+    // Choose API endpoint based on report type
+    const statusCountsUrl = reportType === 'Sensor Data' 
+      ? 'http://localhost:5000/api/reports/sensor-status-counts'
+      : 'http://localhost:5000/api/reports/status-counts';
+    
+    fetch(statusCountsUrl)
       .then((res) => res.json())
       .then((data) => {
         setStatusCounts(data.data);
@@ -85,7 +91,7 @@ const ReportVisualizationPage = () => {
         console.error('[ReportVisualization] status counts fetch error:', err);
         setLoadingStatus(false);
       });
-  }, []);
+  }, [reportType]);
 
   // Helpers for charts (use statusCounts from backend API)
   const statusEntries = statusCounts?.counts ? Object.entries(statusCounts.counts) : [];
@@ -355,7 +361,9 @@ const ReportVisualizationPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Bar Chart (status counts) */}
           <div className="bg-green-100 rounded-xl p-6 shadow">
-            <h2 className="text-xl font-bold text-green-700 mb-4">Collections by Status</h2>
+            <h2 className="text-xl font-bold text-green-700 mb-4">
+              {reportType === 'Sensor Data' ? 'Containers by Status' : 'Collections by Status'}
+            </h2>
             <div className="space-y-3">
               {statusEntries.map(([status, count], idx) => (
                 <div key={status} className="flex items-center gap-4">
@@ -397,32 +405,73 @@ const ReportVisualizationPage = () => {
           </div>
         </div>
 
-        {/* Key Statistics Table (from backend) */}
+        {/* Key Statistics Table (from backend) - conditional by report type */}
         <div className="bg-green-100 rounded-xl p-6 shadow mb-10">
           <h2 className="text-xl font-bold text-green-700 mb-2">Key Statistics</h2>
           <table className="w-full text-left">
             <tbody>
-              {/* Show selected collection status from params at the top */}
-              {params.collectionStatus && (
-                <tr className="border-b border-green-200">
-                  <td className="py-2 px-4 font-semibold text-green-700">Collection Status</td>
-                  <td className="py-2 px-4 text-green-900">{params.collectionStatus}</td>
-                </tr>
+              {reportType === 'Waste Collection Summary' && (
+                <>
+                  {/* Show selected collection status from params at the top */}
+                  {params.collectionStatus && (
+                    <tr className="border-b border-green-200">
+                      <td className="py-2 px-4 font-semibold text-green-700">Collection Status</td>
+                      <td className="py-2 px-4 text-green-900">{params.collectionStatus}</td>
+                    </tr>
+                  )}
+                  <tr className="border-b border-green-200">
+                    <td className="py-2 px-4 font-semibold text-green-700">Total Collections</td>
+                    <td className="py-2 px-4 text-green-900">{reportData.totalCollections}</td>
+                  </tr>
+                  <tr className="border-b border-green-200">
+                    <td className="py-2 px-4 font-semibold text-green-700">Total Waste</td>
+                    <td className="py-2 px-4 text-green-900">{reportData.totalWaste} kg</td>
+                  </tr>
+                  {reportData.byStatus && Object.entries(reportData.byStatus).map(([status, count]) => (
+                    <tr key={status} className="border-b border-green-200">
+                      <td className="py-2 px-4 font-semibold text-green-700">{status}</td>
+                      <td className="py-2 px-4 text-green-900">{count}</td>
+                    </tr>
+                  ))}
+                </>
               )}
-              <tr className="border-b border-green-200">
-                <td className="py-2 px-4 font-semibold text-green-700">Total Collections</td>
-                <td className="py-2 px-4 text-green-900">{reportData.totalCollections}</td>
-              </tr>
-              <tr className="border-b border-green-200">
-                <td className="py-2 px-4 font-semibold text-green-700">Total Waste</td>
-                <td className="py-2 px-4 text-green-900">{reportData.totalWaste} kg</td>
-              </tr>
-              {reportData.byStatus && Object.entries(reportData.byStatus).map(([status, count]) => (
-                <tr key={status} className="border-b border-green-200">
-                  <td className="py-2 px-4 font-semibold text-green-700">{status}</td>
-                  <td className="py-2 px-4 text-green-900">{count}</td>
-                </tr>
-              ))}
+              {reportType === 'Sensor Data' && (
+                <>
+                  <tr className="border-b border-green-200">
+                    <td className="py-2 px-4 font-semibold text-green-700">Total Containers</td>
+                    <td className="py-2 px-4 text-green-900">{reportData.totalContainers}</td>
+                  </tr>
+                  <tr className="border-b border-green-200">
+                    <td className="py-2 px-4 font-semibold text-green-700">Total Container Capacity</td>
+                    <td className="py-2 px-4 text-green-900">{reportData.totalContainerCapacity}</td>
+                  </tr>
+                  <tr className="border-b border-green-200">
+                    <td className="py-2 px-4 font-semibold text-green-700">Total Container Level</td>
+                    <td className="py-2 px-4 text-green-900">{reportData.totalContainerLevel}</td>
+                  </tr>
+                  {/* By Status */}
+                  {reportData.byStatus && Object.entries(reportData.byStatus).map(([status, count]) => (
+                    <tr key={status} className="border-b border-green-200">
+                      <td className="py-2 px-4 font-semibold text-green-700">{status}</td>
+                      <td className="py-2 px-4 text-green-900">{count}</td>
+                    </tr>
+                  ))}
+                  {/* By Type */}
+                  {reportData.byType && Object.entries(reportData.byType).map(([type, count]) => (
+                    <tr key={type} className="border-b border-green-200">
+                      <td className="py-2 px-4 font-semibold text-green-700">Type: {type}</td>
+                      <td className="py-2 px-4 text-green-900">{count}</td>
+                    </tr>
+                  ))}
+                  {/* By City */}
+                  {reportData.byCity && Object.entries(reportData.byCity).map(([city, count]) => (
+                    <tr key={city} className="border-b border-green-200">
+                      <td className="py-2 px-4 font-semibold text-green-700">City: {city}</td>
+                      <td className="py-2 px-4 text-green-900">{count}</td>
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
           </table>
         </div>
