@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import WasteCollectionManagement from '../pages/admin/WasteCollectionManagement';
+import WasteCollectionDetails from '../pages/admin/WasteCollectionDetails';
+import ContainerManagement from '../pages/admin/ContainerManagement';
+import ContainerDetails from '../pages/admin/ContainerDetails';
+import ReportGenerationPage from '../pages/admin/ReportGenerationPage';
+import ReportVisualizationPage from '../pages/admin/ReportVisualizationPage';
+import Profile from '../pages/admin/Profile';
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -90,6 +99,18 @@ const AdminLayout = ({ children }) => {
         </header>
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <Routes>
+            <Route path="/" element={<AdminDashboard />} />
+            <Route path="/waste-collection" element={<WasteCollectionManagement />} />
+            <Route path="/waste-collection/:id" element={<WasteCollectionDetails />} />
+            <Route path="/containers" element={<ContainerManagement />} />
+            <Route path="/containers/full" element={<ContainerManagement />} />
+            <Route path="/containers/:id" element={<ContainerDetails />} />
+            <Route path="/reports" element={<ReportGenerationPage />} />
+            <Route path="/reports/view" element={<ReportVisualizationPage />} />
+            <Route path="/profile" element={<Profile />} />
+            {/* Other routes */}
+          </Routes>
           {children}
         </main>
       </div>
