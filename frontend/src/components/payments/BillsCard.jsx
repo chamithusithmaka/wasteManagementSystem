@@ -25,6 +25,12 @@ const BillsCard = ({
   // Get counts
   const unpaidCount = bills.filter(bill => bill.status === 'due' || bill.status === 'overdue').length;
   
+  // Sort bills: due/overdue first, then paid
+  const sortedBills = [...bills].sort((a, b) => {
+    const statusOrder = { 'overdue': 0, 'due': 1, 'paid': 2 };
+    return (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
+  });
+
   return (
     <div className="bg-white rounded-xl shadow-md p-5">
       <div className="flex justify-between items-center mb-4">
@@ -56,7 +62,7 @@ const BillsCard = ({
           </div>
 
           <div className="space-y-3 max-h-60 overflow-y-auto">
-            {bills.map(bill => (
+            {sortedBills.map(bill => (
               <div 
                 key={bill.id} 
                 className={`flex items-center p-3 rounded-md border ${
