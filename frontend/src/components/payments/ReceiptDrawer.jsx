@@ -1,8 +1,11 @@
-import React from 'react';
-import { sendReceiptEmail } from '../../Services/paymentServices';
+import React, { useState } from 'react';
+import { sendReceiptEmail } from '../../Services/transactionServices';
 import generatePDF from '../common/PDFGenerator';
 
 const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+  
   if (!isOpen || !receipt) return null;
   
   // Format date
@@ -68,11 +71,21 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
   
   // Handle send to email
   const handleEmailReceipt = async () => {
+    if (!receipt.payer.email) {
+      setSendResult({ success: false, message: 'No email address provided' });
+      return;
+    }
+    
+    setSending(true);
+    setSendResult(null);
+    
     try {
-      await sendReceiptEmail(receipt.payer.email, receipt);
-      alert('Receipt sent to your email!');
+      const response = await sendReceiptEmail(receipt.payer.email, receipt);
+      setSendResult({ success: true, message: response.message || 'Receipt sent to your email!' });
     } catch (err) {
-      alert('Failed to send receipt: ' + err.message);
+      setSendResult({ success: false, message: err.message || 'Failed to send receipt' });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -113,7 +126,7 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Transaction ID:</span>
-                <span className="font-medium text-gray-800">{receipt.idempotencyKey.substring(0, 8)}</span>
+                <span className="font-medium text-gray-800">{receipt.idempotencyKey ? receipt.idempotencyKey.substring(0, 8) : 'N/A'}</span>
               </div>
             </div>
             
@@ -137,7 +150,7 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
               ))}
             </div>
             
-            {receipt.deductions.length > 0 && (
+            {receipt.deductions && receipt.deductions.length > 0 && (
               <div className="border-t border-gray-200 pt-4 mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Deductions</h4>
                 {receipt.deductions.map((deduction, index) => (
@@ -180,6 +193,13 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
             </p>
           </div>
           
+          {/* Show result message if any */}
+          {sendResult && (
+            <div className={`p-3 mb-4 rounded-md ${sendResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {sendResult.message}
+            </div>
+          )}
+          
           <div className="flex space-x-4">
             <button 
               onClick={handleDownload}
@@ -192,13 +212,26 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
             </button>
             <button 
               onClick={handleEmailReceipt}
-              className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg flex items-center justify-center"
+              disabled={sending}
+              className={`flex-1 py-2 ${sending ? 'bg-gray-300' : 'bg-gray-200 hover:bg-gray-300'} text-gray-800 font-medium rounded-lg flex items-center justify-center`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-              </svg>
-              Send to Email
+              {sending ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                  Send to Email
+                </>
+              )}
             </button>
           </div>
         </div>

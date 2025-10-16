@@ -94,22 +94,28 @@ class WasteCollectionService {
   }
 
   // Admin: Mark pickup as complete
-  static async completePickup(pickupId, data) {
+  static async completePickup(id, { wasteAmount }) {
     try {
-      const { wasteAmount } = data;
-      return await WasteCollection.findByIdAndUpdate(
-        pickupId,
-        { 
-          $set: { 
-            status: 'Completed', 
+      console.log(`WasteCollectionService: Completing pickup ${id} with amount ${wasteAmount}`);
+      
+      // The way you update matters - use findByIdAndUpdate with returnDocument: 'after' option
+      const pickup = await WasteCollection.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: 'Completed',
             completedAt: new Date(),
             wasteAmount: wasteAmount || 0
-          } 
+          }
         },
-        { new: true }
+        { new: true, runValidators: true }
       );
+      
+      console.log(`WasteCollectionService: Pickup completed, status: ${pickup.status}`);
+      return pickup;
     } catch (error) {
-      throw error;
+      console.error('Error completing pickup:', error);
+      throw new Error(`Failed to complete pickup: ${error.message}`);
     }
   }
 

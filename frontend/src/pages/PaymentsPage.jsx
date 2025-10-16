@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { getWallet, addFunds, getRecentTransactions } from '../Services/paymentServices'; // <-- import your service
+import { getWallet, addFunds } from '../Services/paymentServices';
+import { getResidentRewards } from '../Services/rewardServices';
+import { getUserBills, payMultipleBills } from '../Services/billServices'; // Add this import
+import { getRecentTransactions } from '../Services/transactionServices.js';
 import { useUser } from '../context/UserContext';
-import Layout from '../components/Layout'; // <-- Import Layout
+import Layout from '../components/Layout';
 import HeaderBar from '../components/payments/HeaderBar';
 import BillsCard from '../components/payments/BillsCard';
 import RewardsCard from '../components/payments/RewardsCard';
@@ -11,28 +14,13 @@ import AddWalletModal from '../components/payments/AddWalletModal';
 import CheckoutModal from '../components/payments/CheckoutModal';
 import ReceiptDrawer from '../components/payments/ReceiptDrawer';
 import Toast from '../components/payments/Toast';
-import BillAlert from '../components/payments/BillAlert'; // Add this import
-
-// Mock data
-const initialBills = [
-  { id: "b1", title: "September Collection", dueDate: "2024-09-30", tags: ["Regular", "Bulky Items"], amount: 28.50, status: "overdue" },
-  { id: "b2", title: "Special Pickup", dueDate: "2024-10-05", tags: ["E-Waste Collection"], amount: 15.00, status: "due" },
-];
-const initialRewards = [
-  { id: "r1", label: "E-Waste (15kg)", date: "2024-09-20", amount: 12.50 },
-  { id: "r2", label: "Recyclables (8kg)", date: "2024-09-15", amount: 4.20 },
-  { id: "r3", label: "Bottles (24 units)", date: "2024-09-10", amount: 2.40 },
-];
-const initialTransactions = [
-  { id: "t1", type: "payment", label: "Payment - August Bill", date: "2024-08-28", amount: -32.10 },
-  { id: "t2", type: "reward",  label: "Reward - Recycling",   date: "2024-08-25", amount: +8.50 },
-];
+import BillAlert from '../components/payments/BillAlert';
 
 const PaymentsPage = () => {
   const { user } = useUser();
   const [wallet, setWallet] = useState({ balance: 0 });
-  const [bills, setBills] = useState(initialBills);
-  const [rewards, setRewards] = useState(initialRewards);
+  const [bills, setBills] = useState([]); // Start with empty array
+  const [rewards, setRewards] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
   const [selectedBillIds, setSelectedBillIds] = useState([]);
@@ -50,25 +38,73 @@ const PaymentsPage = () => {
   const [checkoutReceipt, setCheckoutReceipt] = useState(null);
   const [showBillsSection, setShowBillsSection] = useState(false); // Add this state
 
-  // Fetch wallet and recent transactions on mount or when user changes
+  // Fetch wallet, transactions, rewards, and bills on mount or when user changes
   useEffect(() => {
-  if (user?.id) {
-    getWallet(user.id).then(setWallet).catch(() => setWallet({ balance: 0 }));
-    getRecentTransactions(user.id, 5)
-      .then(data => {
-        // Map backend fields to frontend expected fields
-        const mapped = data.map(txn => ({
-          id: txn.txnId || txn._id, // fallback to _id if txnId missing
-          type: txn.type === "CREDIT" ? "topup" : "payment", // or use txn.type directly if you want
-          label: txn.note || (txn.type === "CREDIT" ? "Wallet Top-up" : "Payment"),
-          date: txn.createdAt,
-          amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
-        }));
-        setTransactions(mapped);
-      })
-      .catch(() => setTransactions([]));
-  }
-}, [user]);
+    if (user?.id) {
+      // Fetch wallet data
+      getWallet()  // No need to pass residentId anymore
+        .then(setWallet)
+        .catch((error) => {
+          console.error("Wallet fetch error:", error);
+          setWallet({ balance: 0 });
+        });
+      
+      // Fetch transactions using new service
+      getRecentTransactions(5)
+        .then(transactions => {
+          const mapped = transactions.map(txn => ({
+            id: txn._id,
+            type: txn.type === "CREDIT" ? "topup" : "payment",
+            label: txn.note,
+            date: txn.createdAt,
+            amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+            paymentMethod: txn.paymentMethod,
+            status: txn.status
+          }));
+          setTransactions(mapped);
+        })
+        .catch(() => setTransactions([]));
+      
+      // Fetch rewards
+      getResidentRewards()
+        .then(data => {
+          const mappedRewards = data.map(reward => ({
+            id: reward._id,
+            label: reward.label,
+            date: reward.date,
+            amount: reward.amount,
+            description: reward.description,
+            type: reward.type
+          }));
+          setRewards(mappedRewards);
+        })
+        .catch(err => {
+          console.error('Failed to fetch rewards:', err);
+          setRewards([]);
+        });
+      
+      // Fetch bills (new)
+      getUserBills()
+        .then(data => {
+          // Map to match our expected format in the UI
+          const mappedBills = data.map(bill => ({
+            id: bill._id,
+            title: bill.title,
+            dueDate: bill.dueDate,
+            tags: bill.tags || [],
+            amount: bill.amount,
+            status: bill.status,
+            invoiceNumber: bill.invoiceNumber,
+            collectionId: bill.collectionId
+          }));
+          setBills(mappedBills);
+        })
+        .catch(err => {
+          console.error('Failed to fetch bills:', err);
+          setBills([]);
+        });
+    }
+  }, [user]);
 
   // Bill selection logic
   const handleSelectBill = (billId) => {
@@ -89,12 +125,45 @@ const PaymentsPage = () => {
 
   // Add funds to wallet
   const handleAddFunds = async (amount) => {
-    if (!user?.id) return;
-    await addFunds(user.id, amount, "manual", user.email);
-    const updated = await getWallet(user.id);
-    setWallet(updated);
-    setShowAddWallet(false);
-    setToast({ message: `Added LKR ${amount.toFixed(2)} to wallet`, type: 'success' });
+    try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+      
+      const result = await addFunds(user.id, amount);
+      console.log('Add funds result:', result);
+      
+      // Update wallet balance
+      setWallet(prev => ({
+        ...prev,
+        balance: result.newBalance
+      }));
+      
+      // Refresh transactions
+      const updatedTransactions = await getRecentTransactions(5);
+      const mappedTransactions = updatedTransactions.map(txn => ({
+        id: txn._id,
+        type: txn.type === "CREDIT" ? "topup" : "payment",
+        label: txn.note || (txn.type === "CREDIT" ? "Wallet Top-up" : "Payment"),
+        date: txn.createdAt,
+        amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+        paymentMethod: txn.paymentMethod,
+        status: txn.status
+      }));
+      
+      setTransactions(mappedTransactions);
+      setShowAddWallet(false);
+      setToast({ 
+        message: `Added LKR ${amount.toFixed(2)} to wallet`, 
+        type: 'success' 
+      });
+    } catch (error) {
+      console.error('Add funds error:', error);
+      setToast({ 
+        message: error.message || 'Failed to add funds to wallet', 
+        type: 'error' 
+      });
+    }
   };
 
   // Pay All (open checkout)
@@ -105,79 +174,103 @@ const PaymentsPage = () => {
   };
   
   // Pay Now button in checkout modal
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     setCheckoutStatus("processing");
     
-    // Simulate processing delay
-    setTimeout(() => {
-      // Generate a receipt
+    try {
+      // Get data about selected bills
       const selectedBillsData = bills.filter(bill => selectedBillIds.includes(bill.id));
-      const totalAmount = selectedBillsData.reduce((sum, bill) => sum + bill.amount, 0);
       
+      // Call API to pay bills
+      const response = await payMultipleBills(
+        selectedBillIds, 
+        paymentMethod,
+        useWalletFirst,
+        applyRewards
+      );
+      
+      // Create receipt from response
       const receipt = {
-        id: uuidv4(),
+        id: response.paymentId || uuidv4(),
         date: new Date().toISOString(),
-        reference: 'RCPT-' + Date.now().toString().slice(-6),
+        reference: response.reference || ('RCPT-' + Date.now().toString().slice(-6)),
         idempotencyKey: uuidv4(),
-        payer: { name: 'John Doe', id: 'U123' },
+        payer: { 
+          name: user?.username || 'User', 
+          id: user?.id || 'U123',
+          email: user?.email || ''
+        },
         items: selectedBillsData.map(bill => ({ 
           description: bill.title, 
           amount: bill.amount 
         })),
-        deductions: applyRewards ? [{ 
-          description: 'Rewards Applied', 
-          amount: Math.min(
-            rewards.reduce((sum, reward) => sum + reward.amount, 0), 
-            totalAmount
-          ) 
-        }] : [],
-        taxes: [],
-        total: totalAmount - (applyRewards ? Math.min(
-          rewards.reduce((sum, reward) => sum + reward.amount, 0), 
-          totalAmount
-        ) : 0),
-        paymentMethod: paymentMethod === 'wallet' ? 'Wallet' : 
-                     paymentMethod === 'card' && useWalletFirst ? 'Wallet + Card' :
-                     paymentMethod === 'card' ? 'Card' : 'Cash at Office'
+        deductions: response.deductions || [],
+        taxes: response.taxes || [],
+        total: response.totalPaid,
+        paymentMethod: response.paymentMethod || (
+          paymentMethod === 'wallet' ? 'Wallet' : 
+          paymentMethod === 'card' && useWalletFirst ? 'Wallet + Card' :
+          paymentMethod === 'card' ? 'Card' : 'Cash at Office'
+        )
       };
       
       setCheckoutReceipt(receipt);
       setCheckoutStatus("success");
       
-      // If success, update wallet balance for wallet payments
-      if (paymentMethod === 'wallet' || useWalletFirst) {
-        const walletDeduction = Math.min(wallet.balance, receipt.total);
-        setWallet(prev => ({
-          ...prev,
-          balance: prev.balance - walletDeduction
-        }));
+      // Refresh wallet balance
+      if (user?.id) {
+        const updated = await getWallet(user.id);
+        setWallet(updated);
       }
       
-    }, 2000); // 2 second delay for simulation
+    } catch (error) {
+      console.error("Payment failed:", error);
+      setCheckoutStatus("error");
+      setToast({ message: error.message || 'Payment failed. Please try again.', type: 'error' });
+    }
   };
 
   // Checkout complete (simulate)
-  const handleCheckoutSuccess = () => {
-    // Mark bills as paid
-    setBills((prev) =>
-      prev.map((bill) =>
-        selectedBillIds.includes(bill.id)
-          ? { ...bill, status: 'paid' }
-          : bill
-      )
-    );
-    
-    if (checkoutReceipt) {
-      setTransactions((prev) => [
-        { id: `t${prev.length + 1}`, type: 'payment', label: 'Payment - Bills', date: new Date().toISOString().slice(0, 10), amount: -checkoutReceipt.total },
-        ...prev,
-      ]);
+  const handleCheckoutSuccess = async () => {
+    // Refresh bills list instead of manually updating
+    try {
+      const updatedBills = await getUserBills();
+      const mappedBills = updatedBills.map(bill => ({
+        id: bill._id,
+        title: bill.title,
+        dueDate: bill.dueDate,
+        tags: bill.tags || [],
+        amount: bill.amount,
+        status: bill.status,
+        invoiceNumber: bill.invoiceNumber,
+        collectionId: bill.collectionId
+      }));
+      setBills(mappedBills);
+      
+      // Refresh wallet
+      const updatedWallet = await getWallet();
+      setWallet(updatedWallet);
+      
+      // Refresh transactions - FIX THIS PART
+      const updatedTransactions = await getRecentTransactions(5); // Don't pass user.id
+      const mappedTxns = updatedTransactions.map(txn => ({
+        id: txn._id || txn.txnId,
+        type: txn.type === "CREDIT" ? "topup" : "payment",
+        label: txn.note || (txn.type === "CREDIT" ? "Wallet Top-up" : "Payment"),
+        date: txn.createdAt,
+        amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+        paymentMethod: txn.paymentMethod,
+        status: txn.status
+      }));
+      setTransactions(mappedTxns);
       
       setShowCheckout(false);
       setActiveReceipt(checkoutReceipt);
       setShowReceipt(true);
       setSelectedBillIds([]);
       setToast({ message: 'Payment successful!', type: 'success' });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
     }
   };
 
@@ -233,6 +326,7 @@ const PaymentsPage = () => {
 
   // Get unpaid bills for the alert
   const unpaidBills = bills.filter(bill => bill.status === "overdue" || bill.status === "due");
+  const overdueBills = bills.filter(bill => bill.status === 'overdue'); // <-- Added this line
 
   return (
     <Layout>
@@ -253,7 +347,7 @@ const PaymentsPage = () => {
         {/* Add Bill Alert here, right after HeaderBar */}
         <div className="max-w-6xl mx-auto mt-4 px-4">
           <BillAlert 
-            unpaidBills={unpaidBills}
+            unpaidBills={unpaidBills} // Pass all unpaid bills (both due and overdue)
             onViewBills={handleViewUnpaidBills}
           />
         </div>

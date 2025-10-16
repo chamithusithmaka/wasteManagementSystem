@@ -1,11 +1,18 @@
 import express from 'express';
-import { getWallet, addFunds, getTransactions, getRecentTransactions, emailReceipt} from '../controllers/walletController.js';
+import { getWallet, addFunds, getTransactions, getRecentTransactions, getMyWallet } from '../controllers/walletController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/:residentId', getWallet); // GET /api/wallet/:residentId
-router.post('/:residentId/add', addFunds); // POST /api/wallet/:residentId/add
-router.get('/:residentId/transactions', getTransactions); // GET /api/wallet/:residentId/transactions
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
+
+// Routes
+router.post('/add-funds', addFunds);
+router.get('/my-wallet', getMyWallet); // Add this route
+router.get('/:residentId', getWallet);
+router.get('/:residentId/transactions', getTransactions);
 router.get('/:residentId/recent', getRecentTransactions);
-router.post('/email-receipt', emailReceipt); // POST /api/wallet/em
+// router.post('/email-receipt', emailReceipt);
+
 export default router;
