@@ -21,7 +21,7 @@ const ContainerSchema = new mongoose.Schema({
   containerLocation: {
     address: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     city: {
