@@ -86,55 +86,30 @@ class ContainerController {
     }
   }
 
-  /**
-   * Forward location data to an upstream container API.
-   * Accepts either `req.params.containerId` or `req.params.id` for compatibility.
-   * Forwards the request body as JSON with a PUT to http://localhost:5000/api/containers/:containerId
-   */
-  async sendLocation(req, res) {
+  async getByStatus(req, res) {
     try {
-      let containerId = req.params.containerId || req.params.id;
-      // If user passed a Mongo ObjectId (_id), try to resolve to business containerId
-      if (containerId && containerId.match(/^[0-9a-fA-F]{24}$/)) {
-        const container = await containerService.getContainerByMongoId(containerId);
-        if (!container) return res.status(404).json({ message: 'Container not found' });
-        // use the stored business containerId if present
-        containerId = container.containerId || containerId;
-      }
-      if (!containerId) return res.status(400).json({ message: 'Missing containerId parameter' });
-      // Extract only address and city from possible payload shapes
-      const address = req.body?.address || req.body?.containerLocation?.address;
-      const city = req.body?.city || req.body?.containerLocation?.city;
-
-      if (!address || !city) {
-        return res.status(400).json({ message: 'Request body must include address and city' });
-      }
-
-      const outgoingPayload = { address, city };
-
-      const upstreamUrl = `http://localhost:5000/api/containers/${encodeURIComponent(containerId)}`;
-
-      // Use global fetch (Node 18+). If unavailable, suggest installing node-fetch/axios.
-      if (typeof fetch !== 'function') {
-        throw new Error('Global fetch is not available in this Node runtime. Install a fetch polyfill (node-fetch) or upgrade Node.');
-      }
-
-      const response = await fetch(upstreamUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(outgoingPayload),
+      const { status } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      
+      const containers = await containerService.getContainersByStatusPaginated(
+        status,
+        page,
+        limit
+      );
+      
+      const totalContainers = await containerService.countContainersByStatus(status);
+      const totalPages = Math.ceil(totalContainers / limit);
+      
+      return res.json({
+        containers,
+        pagination: {
+          total: totalContainers,
+          page,
+          limit,
+          totalPages
+        }
       });
-
-      const text = await response.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        // Upstream returned non-JSON; return raw text
-        data = { raw: text };
-      }
-
-      return res.status(response.status).json(data);
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
