@@ -9,6 +9,7 @@ const router = Router();
  */
 router.post("/", containerController.create);
 router.get("/", containerController.getAll);
+router.get("/status/:status", containerController.getByStatus); // Add this new route for status filtering
 router.get("/:id", containerController.getById);
 router.put("/:id", containerController.update);
 router.delete("/:id", containerController.delete);

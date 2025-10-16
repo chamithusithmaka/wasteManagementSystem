@@ -54,6 +54,35 @@ class ContainerController {
       return res.status(500).json({ error: err.message });
     }
   }
+
+  async getByStatus(req, res) {
+    try {
+      const { status } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      
+      const containers = await containerService.getContainersByStatusPaginated(
+        status,
+        page,
+        limit
+      );
+      
+      const totalContainers = await containerService.countContainersByStatus(status);
+      const totalPages = Math.ceil(totalContainers / limit);
+      
+      return res.json({
+        containers,
+        pagination: {
+          total: totalContainers,
+          page,
+          limit,
+          totalPages
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 }
 
 export default new ContainerController();

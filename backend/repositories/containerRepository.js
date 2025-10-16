@@ -322,6 +322,21 @@ class ContainerRepository {
 
     return await Container.bulkWrite(operations);
   }
+
+  /**
+   * Find containers by status with pagination
+   * @param {String} status - Container status to filter by
+   * @param {Number} page - Page number
+   * @param {Number} limit - Items per page
+   * @returns {Promise<Array>} Array of container documents
+   */
+  async findByStatusPaginated(status, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    return await Container.find({ status })
+      .skip(skip)
+      .limit(limit)
+      .sort({ containerLevel: -1 }); // Sort by container level descending
+  }
 }
 
 export default new ContainerRepository();

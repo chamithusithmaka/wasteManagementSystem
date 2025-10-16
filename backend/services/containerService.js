@@ -262,6 +262,26 @@ class ContainerService {
       isErrorDetected: false
     });
   }
+
+  /**
+   * Get containers by status with pagination
+   * @param {String} status - Container status
+   * @param {Number} page - Page number
+   * @param {Number} limit - Items per page
+   * @returns {Promise<Array>} Array of containers
+   */
+  async getContainersByStatusPaginated(status, page = 1, limit = 10) {
+    return await containerRepository.findByStatusPaginated(status, page, limit);
+  }
+
+  /**
+   * Count containers by status
+   * @param {String} status - Container status
+   * @returns {Promise<Number>} Count of containers
+   */
+  async countContainersByStatus(status) {
+    return await containerRepository.countByStatus(status);
+  }
 }
 
 export default new ContainerService();
