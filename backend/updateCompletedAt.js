@@ -12,7 +12,7 @@ const run = async () => {
 
     // Update the dueDate to a past date
     await Invoice.updateOne(
-      { _id: new mongoose.Types.ObjectId("68f0e8d5b0c3c2115f09eba7") },
+      { _id: new mongoose.Types.ObjectId("68f1245d61e5755c52b010af") },
       { $set: { dueDate: new Date("2025-10-25T10:10:25.043Z") } } // 👈 your new past date
     );
 
