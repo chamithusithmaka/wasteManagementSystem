@@ -140,12 +140,17 @@ const PaymentsPage = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedBillIds.length === bills.length) {
-      setSelectedBillIds([]);
-    } else {
-      setSelectedBillIds(bills.map((b) => b.id));
-    }
-  };
+  // Only select bills that are not paid
+  const unpaidBillIds = bills
+    .filter(bill => bill.status === 'due' || bill.status === 'overdue')
+    .map(bill => bill.id);
+
+  if (selectedBillIds.length === unpaidBillIds.length) {
+    setSelectedBillIds([]);
+  } else {
+    setSelectedBillIds(unpaidBillIds);
+  }
+};
 
   // Add funds to wallet
   const handleAddFunds = async (amount) => {
