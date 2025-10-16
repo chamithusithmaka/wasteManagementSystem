@@ -1,4 +1,5 @@
 import WasteCollectionRepository from '../repositories/wasteCollectionRepository.js';
+import WasteCollection from '../models/WasteCollection.js';
 
 class WasteCollectionService {
   // Create a new waste collection pickup
@@ -68,19 +69,38 @@ class WasteCollectionService {
   }
 
   // Admin: Mark pickup as complete
-  static async completePickup(pickupId, data) {
+  static async completePickup(id, { wasteAmount }) {
     try {
-      const { wasteAmount } = data;
-      return await WasteCollectionRepository.updateById(
-        pickupId,
+      console.log(`WasteCollectionService: Completing pickup ${id} with amount ${wasteAmount}`);
+
+      // 1. Update using Mongoose model (friend's logic)
+      const pickup = await WasteCollection.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: 'Completed',
+            completedAt: new Date(),
+            wasteAmount: wasteAmount || 0
+          }
+        },
+        { new: true, runValidators: true }
+      );
+
+      // 2. Also update using repository (your logic)
+      await WasteCollectionRepository.updateById(
+        id,
         { 
           status: 'Completed', 
           completedAt: new Date(),
           wasteAmount: wasteAmount || 0
         }
       );
+
+      console.log(`WasteCollectionService: Pickup completed, status: ${pickup.status}`);
+      return pickup;
     } catch (error) {
-      throw error;
+      console.error('Error completing pickup:', error);
+      throw new Error(`Failed to complete pickup: ${error.message}`);
     }
   }
 
