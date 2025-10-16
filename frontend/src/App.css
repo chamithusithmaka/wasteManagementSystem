@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/* small animations used by pages */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 420ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+/* spinner already uses tailwind animate-spin; keep extras minimal */

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UserService from './services/userService';
 
 const UserLogin = () => {
   const [username, setUsername] = useState('');
@@ -11,26 +12,69 @@ const UserLogin = () => {
   const [adminError, setAdminError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (username === '' || password === '') {
       setError('Please enter both username and password.');
       return;
     }
-    setError('');
-    // Redirect to dashboard after successful login
-    navigate('/dashboard');
+    
+    try {
+      // Make API call to login
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.message || 'Login failed. Please check your credentials.');
+        return;
+      }
+      
+      // Store token in localStorage
+      localStorage.setItem('token', data.token);
+      
+      // Store user info if available
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+      
+      setError('');
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
+    }
   };
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
     if (adminUsername === '' || adminPassword === '') {
       setAdminError('Please enter both admin username and password.');
       return;
     }
     setAdminError('');
-    // Redirect admin to dashboard after successful login
-    navigate('/dashboard');
+    try {
+      const data = await UserService.login(adminUsername, adminPassword);
+      if (!data.token || !data.user) {
+        setAdminError(data.message || 'Login failed.');
+        return;
+      }
+      localStorage.setItem('token', data.token);
+      if (data.user.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else {
+        setAdminError('Not an admin account.');
+      }
+    } catch (err) {
+      setAdminError('Network error. Please try again.');
+    }
   };
 
   return (

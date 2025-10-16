@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UserService from './services/userService';
 
 const UserSignup = () => {
   const [fullName, setFullName] = useState('');
@@ -11,7 +12,7 @@ const UserSignup = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     if (!fullName || !address || !email || !username || !password || !confirmPassword) {
       setError('Please fill all fields.');
@@ -21,10 +22,18 @@ const UserSignup = () => {
       setError('Passwords do not match.');
       return;
     }
-    // TODO: Replace with real signup logic
     setError('');
-    alert('Signup successful!');
-    navigate('/');
+    try {
+      const data = await UserService.signup({ name: fullName, username, email, password });
+      if (data.message && data.message !== 'User registered successfully.') {
+        setError(data.message);
+        return;
+      }
+      alert('Signup successful!');
+      navigate('/');
+    } catch (err) {
+      setError('Network error. Please try again.');
+    }
   };
 
   return (

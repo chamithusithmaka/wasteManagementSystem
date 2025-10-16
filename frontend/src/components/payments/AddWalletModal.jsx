@@ -7,20 +7,25 @@ const AddWalletModal = ({ isOpen, onClose, onAddFunds }) => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       alert('Please enter a valid amount');
       return;
     }
+    
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      onAddFunds(parsedAmount);
+    try {
+      await onAddFunds(parsedAmount);
       setAmount('');
       setPaymentMethod('card');
-    }, 1500);
+      onClose();
+    } catch (error) {
+      alert(error.message || 'Failed to add funds. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
