@@ -8,7 +8,7 @@ class WasteCollectionController {
   // Create new pickup request
   static async schedulePickup(req, res) {
     try {
-      const { address, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
+      const { address, province, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
       const userId = req.user._id;
       const username = req.user.username;
 
@@ -20,6 +20,7 @@ class WasteCollectionController {
       const pickupData = {
         userId,
         address,
+        province,
         wasteType,
         scheduledDate: new Date(scheduledDate),
         scheduledTime,
@@ -94,7 +95,7 @@ class WasteCollectionController {
     try {
       const { id } = req.params;
       const userId = req.user._id;
-      const { address, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
+      const { address, province, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
       
       const pickup = await WasteCollectionService.getPickupById(id);
       
@@ -114,6 +115,7 @@ class WasteCollectionController {
       
       const updates = {
         ...(address && { address }),
+        ...(province && { province }),
         ...(wasteType && { wasteType }),
         ...(scheduledDate && { scheduledDate: new Date(scheduledDate) }),
         ...(scheduledTime && { scheduledTime }),

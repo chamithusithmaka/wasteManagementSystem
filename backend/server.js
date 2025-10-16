@@ -8,6 +8,8 @@ import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js"; // Import
 import rewardRoutes from "./routes/rewardRoutes.js"; // Import reward routes
 import billRoutes from './routes/billRoutes.js'; // Add this line
 import transactionRoutes from './routes/transactionRoutes.js'; // Add this line
+import containerRoutes from "./routes/containerRoutes.js";
+import { simulateSensorData } from "./utils/sensorSimulator.js";
 
 dotenv.config(); // Load .env variables
 
@@ -43,6 +45,8 @@ app.use('/api/transactions', transactionRoutes); // Add this line
 
 // Import hooks to activate them
 import './hooks/wasteCollectionHooks.js';
+app.use("/api/waste-collection", wasteCollectionRoutes); // Add waste collection routes
+app.use("/api/containers", containerRoutes);
 
 // Example test route (for CRUD later)
 app.get("/api/test", (req, res) => {
