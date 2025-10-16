@@ -30,9 +30,9 @@ export function validateLogin({ username, password }) {
 }
 
 // Validate waste pickup request
-export function validateWastePickup({ address, wasteType, scheduledDate, scheduledTime }) {
-  if (!address || !wasteType || !scheduledDate || !scheduledTime) {
-    return 'Address, waste type, date, and time are required.';
+export function validateWastePickup({ address, province, wasteType, scheduledDate, scheduledTime }) {
+  if (!address || !province || !wasteType || !scheduledDate || !scheduledTime) {
+    return 'Address, province, waste type, date, and time are required.';
   }
   
   // Validate waste type

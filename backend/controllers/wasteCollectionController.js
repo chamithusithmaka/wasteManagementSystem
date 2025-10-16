@@ -5,11 +5,11 @@ class WasteCollectionController {
   // Create new pickup request
   static async schedulePickup(req, res) {
     try {
-      const { address, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
+      const { address, province, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
       const userId = req.user._id;
       const username = req.user.username;
 
-      const validationError = validateWastePickup({ address, wasteType, scheduledDate, scheduledTime });
+      const validationError = validateWastePickup({ address, province, wasteType, scheduledDate, scheduledTime });
       if (validationError) {
         return res.status(400).json({ message: validationError });
       }
@@ -17,6 +17,7 @@ class WasteCollectionController {
       const pickupData = {
         userId,
         address,
+        province,
         wasteType,
         scheduledDate: new Date(scheduledDate),
         scheduledTime,
@@ -91,7 +92,7 @@ class WasteCollectionController {
     try {
       const { id } = req.params;
       const userId = req.user._id;
-      const { address, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
+      const { address, province, wasteType, scheduledDate, scheduledTime, notes, containerFillLevel } = req.body;
       
       const pickup = await WasteCollectionService.getPickupById(id);
       
@@ -111,6 +112,7 @@ class WasteCollectionController {
       
       const updates = {
         ...(address && { address }),
+        ...(province && { province }),
         ...(wasteType && { wasteType }),
         ...(scheduledDate && { scheduledDate: new Date(scheduledDate) }),
         ...(scheduledTime && { scheduledTime }),

@@ -18,21 +18,38 @@ const UserLogin = () => {
       setError('Please enter both username and password.');
       return;
     }
-    setError('');
+    
     try {
-      const data = await UserService.login(username, password);
-      if (!data.token || !data.user) {
-        setError(data.message || 'Login failed.');
+      // Make API call to login
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.message || 'Login failed. Please check your credentials.');
         return;
       }
+      
+      // Store token in localStorage
       localStorage.setItem('token', data.token);
-      if (data.user.role === 'user') {
-        navigate('/dashboard');
-      } else {
-        setError('Account is not registered as a user.');
+      
+      // Store user info if available
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
       }
+      
+      setError('');
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
     } catch (err) {
-      setError('Network error. Please try again.');
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 
