@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-/**
- * SchedulePickup
- * - separate page with animated submit
- * - saves to localStorage key 'userPickups' (replace with API call)
- * - minimal validation, SRP: form handling contained here
- */
+import WasteCollectionService from '../../services/wasteCollectionService';
 
 const defaultForm = {
   address: '',
+  province: '',
   wasteType: 'Recyclables',
   date: '',
   time: '',
   notes: '',
+  containerFillLevel: 50
 };
+
+// Sri Lanka provinces for dropdown
+const provinces = [
+  'Central',
+  'Eastern',
+  'North Central',
+  'Northern',
+  'North Western',
+  'Sabaragamuwa',
+  'Southern',
+  'Uva',
+  'Western'
+];
 
 const SchedulePickup = () => {
   const [form, setForm] = useState(defaultForm);
@@ -26,10 +35,21 @@ const SchedulePickup = () => {
   const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   const validate = () => {
-    if (!form.address || !form.date || !form.time) {
-      setError('Please fill address, date and time.');
+    if (!form.address || !form.province || !form.date || !form.time) {
+      setError('Please fill address, province, date and time.');
       return false;
     }
+    
+    // Validate date is in the future
+    const pickupDate = new Date(form.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (pickupDate < today) {
+      setError('Pickup date cannot be in the past.');
+      return false;
+    }
+    
     setError('');
     return true;
   };
@@ -39,31 +59,31 @@ const SchedulePickup = () => {
     if (!validate()) return;
     setSubmitting(true);
 
-    // simulate network/processing animation
-    await new Promise(resolve => setTimeout(resolve, 900));
-
     try {
-      const stored = JSON.parse(localStorage.getItem('userPickups') || '[]');
-      const newPickup = {
-        id: `UP-${Date.now()}`,
-        type: form.wasteType,
-        date: form.date,
-        time: form.time,
+      // Map form data to backend format
+      const pickupData = {
         address: form.address,
+        province: form.province,
+        wasteType: form.wasteType,
+        scheduledDate: form.date,
+        scheduledTime: form.time,
         notes: form.notes,
-        status: 'Scheduled'
+        containerFillLevel: parseInt(form.containerFillLevel || 50)
       };
-      localStorage.setItem('userPickups', JSON.stringify([newPickup, ...stored]));
+
+      // Call API to schedule pickup
+      await WasteCollectionService.schedulePickup(pickupData);
+      
       setSuccess(true);
       setSubmitting(false);
 
-      // show success briefly then navigate back to /waste-collection
+      // Show success briefly then navigate back to waste-collection
       setTimeout(() => {
         navigate('/waste-collection');
       }, 900);
     } catch (err) {
       setSubmitting(false);
-      setError('Failed to schedule. Try again.');
+      setError(err.message || 'Failed to schedule. Please try again.');
     }
   };
 
@@ -76,12 +96,37 @@ const SchedulePickup = () => {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="text-sm text-gray-700 font-medium">Pickup Address</label>
-            <input required value={form.address} onChange={(e) => update('address', e.target.value)} className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition" placeholder="123 EcoLane, GreenCity, 12345" />
+            <input 
+              required 
+              value={form.address} 
+              onChange={(e) => update('address', e.target.value)} 
+              className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition" 
+              placeholder="123 EcoLane, GreenCity" 
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-700 font-medium">Province</label>
+            <select 
+              required
+              value={form.province} 
+              onChange={(e) => update('province', e.target.value)} 
+              className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition"
+            >
+              <option value="">Select Province</option>
+              {provinces.map(province => (
+                <option key={province} value={province}>{province}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="text-sm text-gray-700 font-medium">Waste Type</label>
-            <select value={form.wasteType} onChange={(e) => update('wasteType', e.target.value)} className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition">
+            <select 
+              value={form.wasteType} 
+              onChange={(e) => update('wasteType', e.target.value)} 
+              className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition"
+            >
               <option>Recyclables</option>
               <option>General Waste</option>
               <option>Compost</option>
@@ -97,6 +142,21 @@ const SchedulePickup = () => {
             <div>
               <label className="text-sm text-gray-700 font-medium">Collection Time</label>
               <input type="time" value={form.time} onChange={(e) => update('time', e.target.value)} className="w-full px-4 py-3 rounded-lg border border-green-100 bg-green-50 focus:ring-2 focus:ring-green-200 transition" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-700 font-medium">Container Fill Level</label>
+            <div className="flex items-center gap-3">
+              <input 
+                type="range" 
+                min="1" 
+                max="100" 
+                value={form.containerFillLevel || 50} 
+                onChange={(e) => update('containerFillLevel', e.target.value)} 
+                className="flex-1 accent-green-700" 
+              />
+              <span className="text-sm text-gray-700 w-16">{form.containerFillLevel || 50}%</span>
             </div>
           </div>
 
