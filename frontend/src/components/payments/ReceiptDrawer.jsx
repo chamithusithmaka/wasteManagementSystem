@@ -1,4 +1,6 @@
 import React from 'react';
+import { sendReceiptEmail } from '../../Services/paymentServices';
+import generatePDF from '../common/PDFGenerator';
 
 const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
   if (!isOpen || !receipt) return null;
@@ -22,16 +24,56 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
   
   // Handle download as PDF
   const handleDownload = () => {
-    // In a real app, this would generate and download a PDF
-    console.log('Downloading receipt as PDF...');
-    alert('PDF download started (simulated)');
+    // Format date for display
+    const formattedDate = formatDate(receipt.date);
+    
+    // Format receipt data for PDF
+    generatePDF({
+      title: 'Payment Receipt',
+      filename: `receipt-${receipt.reference}`,
+      document: {
+        'Receipt #': receipt.reference,
+        'Date': formattedDate,
+        'Payment Method': receipt.paymentMethod,
+        'Customer': receipt.payer.name,
+        'Email': receipt.payer.email || 'N/A'
+      },
+      tableColumns: ['Description', 'Amount (LKR)'],
+      tableData: [
+        // Items rows
+        ...receipt.items.map(item => [
+          item.description, 
+          item.amount.toFixed(2)
+        ]),
+        // Deductions rows (if any)
+        ...(receipt.deductions || []).map(ded => [
+          `${ded.description} (Discount)`, 
+          `-${ded.amount.toFixed(2)}`
+        ]),
+        // Taxes rows (if any)
+        ...(receipt.taxes || []).map(tax => [
+          tax.description, 
+          tax.amount.toFixed(2)
+        ])
+      ],
+      summary: {
+        'Subtotal': receipt.items.reduce((sum, item) => sum + item.amount, 0),
+        'Discounts': (receipt.deductions || []).reduce((sum, d) => sum + d.amount, 0),
+        'Tax': (receipt.taxes || []).reduce((sum, t) => sum + t.amount, 0),
+        'Total Amount': receipt.total
+      },
+      footer: 'Thank you for choosing UrbanWasteX for your waste management needs.'
+    });
   };
   
   // Handle send to email
-  const handleEmailReceipt = () => {
-    // In a real app, this would send the receipt via email
-    console.log('Sending receipt to email...');
-    alert('Receipt sent to your email (simulated)');
+  const handleEmailReceipt = async () => {
+    try {
+      await sendReceiptEmail(receipt.payer.email, receipt);
+      alert('Receipt sent to your email!');
+    } catch (err) {
+      alert('Failed to send receipt: ' + err.message);
+    }
   };
 
   return (
@@ -79,6 +121,9 @@ const ReceiptDrawer = ({ isOpen, onClose, receipt }) => {
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Payer Details</h4>
               <p className="text-sm">{receipt.payer.name}</p>
               <p className="text-sm text-gray-600">ID: {receipt.payer.id}</p>
+              {receipt.payer.email && (
+                <p className="text-sm text-gray-600">Email: {receipt.payer.email}</p>
+              )}
               {receipt.payer.address && <p className="text-sm text-gray-600">{receipt.payer.address}</p>}
             </div>
             

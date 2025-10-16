@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { getWallet, addFunds, getRecentTransactions } from '../Services/paymentServices'; // <-- import your service
+import { useUser } from '../context/UserContext';
 import Layout from '../components/Layout'; // <-- Import Layout
 import HeaderBar from '../components/payments/HeaderBar';
 import BillsCard from '../components/payments/BillsCard';
@@ -9,9 +11,9 @@ import AddWalletModal from '../components/payments/AddWalletModal';
 import CheckoutModal from '../components/payments/CheckoutModal';
 import ReceiptDrawer from '../components/payments/ReceiptDrawer';
 import Toast from '../components/payments/Toast';
+import BillAlert from '../components/payments/BillAlert'; // Add this import
 
 // Mock data
-const initialWallet = { balance: 45.20 };
 const initialBills = [
   { id: "b1", title: "September Collection", dueDate: "2024-09-30", tags: ["Regular", "Bulky Items"], amount: 28.50, status: "overdue" },
   { id: "b2", title: "Special Pickup", dueDate: "2024-10-05", tags: ["E-Waste Collection"], amount: 15.00, status: "due" },
@@ -27,10 +29,11 @@ const initialTransactions = [
 ];
 
 const PaymentsPage = () => {
-  const [wallet, setWallet] = useState(initialWallet);
+  const { user } = useUser();
+  const [wallet, setWallet] = useState({ balance: 0 });
   const [bills, setBills] = useState(initialBills);
   const [rewards, setRewards] = useState(initialRewards);
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState([]);
 
   const [selectedBillIds, setSelectedBillIds] = useState([]);
   const [showAddWallet, setShowAddWallet] = useState(false);
@@ -45,6 +48,27 @@ const PaymentsPage = () => {
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [checkoutStatus, setCheckoutStatus] = useState("idle");
   const [checkoutReceipt, setCheckoutReceipt] = useState(null);
+  const [showBillsSection, setShowBillsSection] = useState(false); // Add this state
+
+  // Fetch wallet and recent transactions on mount or when user changes
+  useEffect(() => {
+  if (user?.id) {
+    getWallet(user.id).then(setWallet).catch(() => setWallet({ balance: 0 }));
+    getRecentTransactions(user.id, 5)
+      .then(data => {
+        // Map backend fields to frontend expected fields
+        const mapped = data.map(txn => ({
+          id: txn.txnId || txn._id, // fallback to _id if txnId missing
+          type: txn.type === "CREDIT" ? "topup" : "payment", // or use txn.type directly if you want
+          label: txn.note || (txn.type === "CREDIT" ? "Wallet Top-up" : "Payment"),
+          date: txn.createdAt,
+          amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+        }));
+        setTransactions(mapped);
+      })
+      .catch(() => setTransactions([]));
+  }
+}, [user]);
 
   // Bill selection logic
   const handleSelectBill = (billId) => {
@@ -64,8 +88,11 @@ const PaymentsPage = () => {
   };
 
   // Add funds to wallet
-  const handleAddFunds = (amount) => {
-    setWallet((prev) => ({ ...prev, balance: prev.balance + amount }));
+  const handleAddFunds = async (amount) => {
+    if (!user?.id) return;
+    await addFunds(user.id, amount, "manual", user.email);
+    const updated = await getWallet(user.id);
+    setWallet(updated);
     setShowAddWallet(false);
     setToast({ message: `Added LKR ${amount.toFixed(2)} to wallet`, type: 'success' });
   };
@@ -156,25 +183,60 @@ const PaymentsPage = () => {
 
   // View receipt from transaction
   const handleViewReceipt = (id) => {
-    // For demo, just show a mock receipt
+    const txn = transactions.find(t => t.id === id);
+    if (!txn) return;
+
     setActiveReceipt({
-      id: id,
-      date: new Date().toISOString(),
-      reference: 'RCPT-' + id,
-      idempotencyKey: 'demo-key-' + id,
-      payer: { name: 'John Doe', id: 'U123' },
-      items: [{ description: 'Bill Payment', amount: 28.50 }],
+      id: txn.id,
+      date: txn.date,
+      reference: 'RCPT-' + txn.id,
+      idempotencyKey: txn.id,
+      payer: {
+        name: user?.username || 'User',
+        id: user?.id || '',
+        email: user?.email || '',      // <-- Add this line
+      },
+      items: [{
+        description: txn.label,
+        amount: Math.abs(txn.amount)
+      }],
       deductions: [],
       taxes: [],
-      total: 28.50,
-      paymentMethod: 'Wallet',
+      total: Math.abs(txn.amount),
+      paymentMethod: txn.type === 'topup' ? 'Wallet Top-up' : 'Wallet/Payment',
     });
     setShowReceipt(true);
   };
 
+  // New function to handle "View & Pay Bills" action
+  const handleViewUnpaidBills = () => {
+    // Scroll to bills section and highlight it briefly
+    setShowBillsSection(true);
+    
+    // Select all unpaid bills
+    const unpaidBillIds = bills
+      .filter(bill => bill.status === "overdue" || bill.status === "due")
+      .map(bill => bill.id);
+    setSelectedBillIds(unpaidBillIds);
+    
+    // After a delay, remove the highlight
+    setTimeout(() => {
+      setShowBillsSection(false);
+    }, 3000);
+    
+    // Scroll to bills section
+    const billsSection = document.getElementById('bills-section');
+    if (billsSection) {
+      billsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Get unpaid bills for the alert
+  const unpaidBills = bills.filter(bill => bill.status === "overdue" || bill.status === "due");
+
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="min-h-screen">
         {toast && (
           <Toast
             message={toast.message}
@@ -187,7 +249,21 @@ const PaymentsPage = () => {
           wallet={wallet}
           onAddFunds={() => setShowAddWallet(true)}
         />
-        <div className="max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 px-4">
+        
+        {/* Add Bill Alert here, right after HeaderBar */}
+        <div className="max-w-6xl mx-auto mt-4 px-4">
+          <BillAlert 
+            unpaidBills={unpaidBills}
+            onViewBills={handleViewUnpaidBills}
+          />
+        </div>
+        
+        <div 
+          id="bills-section"
+          className={`max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 px-4 ${
+            showBillsSection ? 'highlight-section' : ''
+          }`}
+        >
           <BillsCard
             bills={bills}
             selectedBillIds={selectedBillIds}
@@ -197,6 +273,7 @@ const PaymentsPage = () => {
           />
           <RewardsCard rewards={rewards} />
         </div>
+        
         <div className="max-w-6xl mx-auto mt-8 px-4">
           <TransactionsCard
             transactions={transactions}

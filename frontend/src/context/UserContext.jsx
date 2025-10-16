@@ -3,19 +3,20 @@ import React, { createContext, useContext, useState } from 'react';
 const UserContext = createContext(undefined);
 
 const HARDCODED_USERS = [
-  { username: 'user1', password: 'pass1', role: 'user' },
-  { username: 'admin', password: 'adminpass', role: 'admin' }
+  { id: 'u1', username: 'user1', password: 'pass1', role: 'user', email: 'sithma2002@gmail.com' },
+  { id: 'a1', username: 'admin', password: 'adminpass', role: 'admin', email: 'sithma2002@gmail.com' }
 ];
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // Set the default user to the first hardcoded user
+  const [user, setUser] = useState(HARDCODED_USERS[0]);
 
   const login = (username, password, isAdmin = false) => {
     const found = HARDCODED_USERS.find(
       u => u.username === username && u.password === password && (isAdmin ? u.role === 'admin' : u.role === 'user')
     );
     if (found) {
-      setUser({ username: found.username, role: found.role });
+      setUser({ id: found.id, username: found.username, role: found.role, email: found.email });
       return true;
     }
     return false;
