@@ -5,7 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js"; // Import waste collection routes
 import containerRoutes from "./routes/containerRoutes.js";
-import { simulateSensorData } from "./utils/sensorSimulator.js";
+import { simulateSensorData, startAutomatedSimulation } from "./utils/sensorSimulator.js";
 
 dotenv.config(); // Load .env variables
 
@@ -34,4 +34,11 @@ app.get("/api/test", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🌐 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🌐 Server running on port ${PORT}`);
+  
+  // Start automated sensor simulation after server starts
+  setTimeout(() => {
+    startAutomatedSimulation();
+  }, 3000); // Wait 3 seconds for DB connection to stabilize
+});

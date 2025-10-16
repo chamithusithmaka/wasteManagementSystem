@@ -46,6 +46,25 @@ class ContainerController {
     }
   }
 
+  async getWithErrors(req, res) {
+    try {
+      const containers = await containerService.getContainersWithErrors();
+
+      const normalized = containers.map((c) => {
+        const obj = typeof c.toObject === 'function' ? c.toObject() : { ...c };
+        obj.containerLocation = obj.containerLocation || {};
+        if (obj.containerLocation.address === undefined) obj.containerLocation.address = null;
+        if (obj.containerLocation.city === undefined) obj.containerLocation.city = null;
+        if (obj.containerLocation.coordinates === undefined) obj.containerLocation.coordinates = {};
+        return obj;
+      });
+
+      return res.json(normalized);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   async update(req, res) {
     try {
       const updated = await containerService.updateContainer(req.params.id, req.body);

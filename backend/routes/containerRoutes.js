@@ -11,6 +11,8 @@ router.post("/", containerController.create);
 router.get("/", containerController.getAll);
 // Get containers by status: /api/containers/status/Available
 router.get("/status/:status", containerController.getByStatus);
+// Get containers with errors: /api/containers/errors
+router.get("/errors", containerController.getWithErrors);
 router.get("/:id", containerController.getById);
 router.put("/:id", containerController.update);
 // Update only address and city via location route
