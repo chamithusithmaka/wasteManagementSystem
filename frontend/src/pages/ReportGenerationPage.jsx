@@ -44,8 +44,14 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
     setTimeout(() => {
       setLoading(false);
       setShowResult(true);
-      onGenerate && onGenerate({ reportType, ...params });
-      navigate('/report-visualization', { state: { reportType } });
+      // Ensure backend expects 'status' key (normalize collectionStatus -> status)
+      const forwardedParams = { ...params };
+      if (forwardedParams.collectionStatus && !forwardedParams.status) {
+        forwardedParams.status = forwardedParams.collectionStatus;
+      }
+      onGenerate && onGenerate({ reportType, ...forwardedParams });
+      // Pass all params to visualization page so it can call the API with filters
+      navigate('/report-visualization', { state: { reportType, ...forwardedParams } });
     }, 1500);
   };
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -149,22 +155,6 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
               />
               {errors.location && <span className="text-red-600 text-sm mt-1 block">{errors.location}</span>}
             </div>
-            {/* Zone input */}
-            <div className="flex flex-col min-w-[220px]">
-              <div className="flex items-center mb-2">
-                <label className="text-green-700 font-semibold text-lg mr-2">Zone</label>
-                <span className="ml-1 cursor-pointer" data-tooltip-id="tip-zone">🛈</span>
-                <Tooltip id="tip-zone" place="right" content={PARAMETERS[1].tooltip} />
-              </div>
-              <input
-                type="text"
-                value={params.zone || ''}
-                onChange={(e) => handleParamChange('zone', e.target.value)}
-                placeholder="Enter zone"
-                className={`px-4 py-3 rounded-lg border-2 ${errors.zone ? 'border-red-400' : 'border-green-300'} bg-white focus:bg-green-50 focus:border-green-600 focus:ring-2 focus:ring-green-200 outline-none text-lg transition-all duration-300 ease-in-out`}
-              />
-              {errors.zone && <span className="text-red-600 text-sm mt-1 block">{errors.zone}</span>}
-            </div>
             {/* Waste Type custom dropdown */}
             <div className="flex flex-col min-w-[220px] relative">
               <div className="flex items-center mb-2">
@@ -194,7 +184,7 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                     className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.wasteType ? 'bg-green-50 text-green-700' : ''}`}
                     onClick={() => { handleParamChange('wasteType', ''); setWasteTypeDropdownOpen(false); }}
                   >Select waste type</li>
-                  {['Organic','Plastic','Glass','Metal','Paper','E-waste'].map((type) => (
+                  {['Recyclables','General Waste','Compost','Hazardous'].map((type) => (
                     <li
                       key={type}
                       className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.wasteType === type ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
@@ -205,22 +195,22 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
               </div>
               {errors.wasteType && <span className="text-red-600 text-sm mt-1 block">{errors.wasteType}</span>}
             </div>
-            {/* Collection Method custom dropdown */}
+            {/* Collection Status custom dropdown */}
             <div className="flex flex-col min-w-[220px] relative">
               <div className="flex items-center mb-2">
-                <label className="text-green-700 font-semibold text-lg mr-2">Collection Method</label>
-                <span className="ml-1 cursor-pointer" data-tooltip-id="tip-collectionMethod">🛈</span>
-                <Tooltip id="tip-collectionMethod" place="right" content={PARAMETERS[3].tooltip} />
+                <label className="text-green-700 font-semibold text-lg mr-2">Collection Status</label>
+                <span className="ml-1 cursor-pointer" data-tooltip-id="tip-collectionStatus">🛈</span>
+                <Tooltip id="tip-collectionStatus" place="right" content="Select the status of the collection." />
               </div>
               <div className="relative">
                 <button
                   type="button"
-                  className={`w-full px-4 py-3 rounded-lg border-2 ${errors.collectionMethod ? 'border-red-400' : 'border-green-300'} bg-white text-left text-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out shadow-sm hover:shadow-lg flex items-center justify-between`}
+                  className={`w-full px-4 py-3 rounded-lg border-2 ${errors.collectionStatus ? 'border-red-400' : 'border-green-300'} bg-white text-left text-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out shadow-sm hover:shadow-lg flex items-center justify-between`}
                   onClick={() => setCollectionMethodDropdownOpen((open) => !open)}
                   aria-haspopup="listbox"
                   aria-expanded={collectionMethodDropdownOpen}
                 >
-                  <span>{params.collectionMethod ? params.collectionMethod : 'Select collection method'}</span>
+                  <span>{params.collectionStatus ? params.collectionStatus : 'Select collection status'}</span>
                   <svg className={`ml-2 h-5 w-5 text-green-600 transition-transform duration-300 ${collectionMethodDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -231,19 +221,19 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                   tabIndex={-1}
                 >
                   <li
-                    className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.collectionMethod ? 'bg-green-50 text-green-700' : ''}`}
-                    onClick={() => { handleParamChange('collectionMethod', ''); setCollectionMethodDropdownOpen(false); }}
-                  >Select collection method</li>
-                  {['Manual','Automated','Drop-off','Curbside'].map((type) => (
+                    className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.collectionStatus ? 'bg-green-50 text-green-700' : ''}`}
+                    onClick={() => { handleParamChange('collectionStatus', ''); setCollectionMethodDropdownOpen(false); }}
+                  >Select collection status</li>
+                  {['Scheduled','In Progress','Completed','Cancelled','Pending'].map((type) => (
                     <li
                       key={type}
-                      className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.collectionMethod === type ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
-                      onClick={() => { handleParamChange('collectionMethod', type); setCollectionMethodDropdownOpen(false); }}
+                      className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.collectionStatus === type ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
+                      onClick={() => { handleParamChange('collectionStatus', type); setCollectionMethodDropdownOpen(false); }}
                     >{type}</li>
                   ))}
                 </ul>
               </div>
-              {errors.collectionMethod && <span className="text-red-600 text-sm mt-1 block">{errors.collectionMethod}</span>}
+              {errors.collectionStatus && <span className="text-red-600 text-sm mt-1 block">{errors.collectionStatus}</span>}
             </div>
             <div className="flex flex-col justify-end min-w-[220px]">
               <button
