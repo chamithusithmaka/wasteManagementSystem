@@ -71,7 +71,7 @@ function App() {
               <AdminDashboard />
             </AdminLayout>
           } />
-          <Route path="/schedule-pickup" element={
+          <Route path="/schedule" element={
             <Layout>
               <SchedulePickup />
             </Layout>
