@@ -53,7 +53,10 @@ const BillsCard = ({
               type="checkbox"
               id="select-all"
               className="rounded text-green-500 focus:ring-green-400"
-              checked={selectedBillIds.length > 0 && selectedBillIds.length === bills.length}
+              checked={
+                selectedBillIds.length > 0 &&
+                selectedBillIds.length === bills.filter(bill => bill.status === 'due' || bill.status === 'overdue').length
+              }
               onChange={onSelectAll}
             />
             <label htmlFor="select-all" className="ml-2 text-sm text-gray-600">

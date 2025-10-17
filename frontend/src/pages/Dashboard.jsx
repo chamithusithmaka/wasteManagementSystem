@@ -120,6 +120,9 @@ const PaymentPreviewCard = ({ dueAmount, lastPayment, nextDue }) => {
 };
 
 const Dashboard = () => {
+  // Debug log to check if Dashboard component mounts
+  console.log('Dashboard component mounted/rendered');
+  
   // State for API data
   const [pickups, setPickups] = useState([]);
   const [completedPickups, setCompletedPickups] = useState([]);
@@ -273,27 +276,6 @@ const Dashboard = () => {
           isLoading={loading}
         />
         
-        <StatCard
-          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>}
-          title="Container Fill"
-          value={`${stats.avgFill || 50}%`}
-          subtitle="Average fill level"
-          color="#eab308"
-          isLoading={loading}
-        />
-        
-        <StatCard
-          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>}
-          title="Reward Points"
-          value={stats.rewards || 250}
-          subtitle="Available to redeem"
-          color="#8b5cf6"
-          isLoading={loading}
-        />
       </div>
 
       {/* Middle Section - Charts */}

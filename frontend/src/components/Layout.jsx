@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './Sidebar';
 
 const Layout = ({ children }) => {
+  // Debug log to check if Layout component mounts
+  console.log('Layout component mounted/rendered');
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -67,23 +70,74 @@ const Layout = ({ children }) => {
               {/* User profile */}
               <div className="flex items-center relative" ref={dropdownRef}>
                 {user && (
-                  <span className="text-sm text-gray-700 mr-2">{user.username}</span>
+                  <div className="text-right mr-3 hidden sm:block">
+                    <div className="text-sm font-medium text-gray-800">Welcome back,</div>
+                    <div className="text-xs text-green-600 font-semibold">{user.username}</div>
+                  </div>
                 )}
                 <button
-                  className="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-green-500 transition duration-150 ease-in-out bg-green-100 p-1"
+                  className="relative flex text-sm rounded-full focus:outline-none focus:ring-4 focus:ring-green-300 transition-all duration-200 hover:scale-110"
                   onClick={() => setDropdownOpen((open) => !open)}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <div className="h-10 w-10 bg-gradient-to-br from-green-400 via-green-500 to-green-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  {/* Online indicator */}
+                  <div className="absolute -bottom-0 -right-0 h-3 w-3 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
                 </button>
                 {dropdownOpen && user && (
-                  <div className="absolute right-0 top-full w-56 bg-white rounded-xl shadow-lg border border-green-100 z-50 p-4 text-left">
-                    <div className="font-bold text-green-700 text-lg mb-2">Profile</div>
-                    <div className="mb-1"><span className="font-semibold">Username:</span> {user.username}</div>
-                    <div className="mb-1"><span className="font-semibold">Name:</span> {user.name}</div>
-                    <div className="mb-1"><span className="font-semibold">Email:</span> {user.email}</div>
-                    <div className="mb-1"><span className="font-semibold">Role:</span> {user.role}</div>
+                  <div className="absolute right-0 top-full w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden mt-3 animate-in slide-in-from-top-2 duration-300">
+                    {/* Header with gradient background */}
+                    <div className="bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 px-6 py-4 text-white">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-12 w-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">{user.name || user.username}</h3>
+                          <p className="text-green-100 text-sm">@{user.username}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Profile Information */}
+                    <div className="px-6 py-5 space-y-4">
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
+                              <p className="text-sm font-medium text-gray-900 truncate" title={user.email}>{user.email}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account Type</p>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
+                                {user.role}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

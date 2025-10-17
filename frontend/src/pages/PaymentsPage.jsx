@@ -261,38 +261,11 @@ const PaymentsPage = () => {
 
   // Checkout complete (simulate)
   const handleCheckoutSuccess = async () => {
-    // Refresh bills list instead of manually updating
     try {
-      const updatedBills = await getUserBills();
-      const mappedBills = updatedBills.map(bill => ({
-        id: bill._id,
-        title: bill.title,
-        dueDate: bill.dueDate,
-        tags: bill.tags || [],
-        amount: bill.amount,
-        status: bill.status,
-        invoiceNumber: bill.invoiceNumber,
-        collectionId: bill.collectionId
-      }));
-      setBills(mappedBills);
+      // Refresh all data
+      await refreshAllPaymentData();
       
-      // Refresh wallet
-      const updatedWallet = await getWallet();
-      setWallet(updatedWallet);
-      
-      // Refresh transactions - FIX THIS PART
-      const updatedTransactions = await getRecentTransactions(5); // Don't pass user.id
-      const mappedTxns = updatedTransactions.map(txn => ({
-        id: txn._id || txn.txnId,
-        type: txn.type === "CREDIT" ? "topup" : "payment",
-        label: txn.note || (txn.type === "CREDIT" ? "Wallet Top-up" : "Payment"),
-        date: txn.createdAt,
-        amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
-        paymentMethod: txn.paymentMethod,
-        status: txn.status
-      }));
-      setTransactions(mappedTxns);
-      
+      // Close checkout and show receipt
       setShowCheckout(false);
       setActiveReceipt(checkoutReceipt);
       setShowReceipt(true);
@@ -300,6 +273,7 @@ const PaymentsPage = () => {
       setToast({ message: 'Payment successful!', type: 'success' });
     } catch (error) {
       console.error("Error refreshing data:", error);
+      setToast({ message: 'Payment successful but failed to refresh data', type: 'warning' });
     }
   };
 
@@ -360,56 +334,68 @@ const PaymentsPage = () => {
   // New function to refresh all payment data
   const refreshAllPaymentData = async () => {
     if (user?.id) {
-      // Refresh wallet
-      getWallet().then(setWallet).catch(() => setWallet({ balance: 0 }));
+      try {
+        // Refresh wallet
+        const walletData = await getWallet();
+        setWallet(walletData);
 
-      // Refresh transactions
-      getRecentTransactions(txnLimit)
-        .then(transactions => {
-          const mapped = transactions.map(txn => ({
-            id: txn._id,
-            type: txn.type === "CREDIT" ? "topup" : "payment",
-            label: txn.note,
-            date: txn.createdAt,
-            amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
-            paymentMethod: txn.paymentMethod,
-            status: txn.status
-          }));
-          setTransactions(mapped);
-        })
-        .catch(() => setTransactions([]));
+        // Refresh transactions
+        const txnData = await getRecentTransactions(txnLimit);
+        const mappedTxns = txnData.map(txn => ({
+          id: txn._id,
+          type: txn.type === "CREDIT" ? "topup" : "payment",
+          label: txn.note,
+          date: txn.createdAt,
+          amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+          paymentMethod: txn.paymentMethod,
+          status: txn.status
+        }));
+        setTransactions(mappedTxns);
 
-      // Refresh rewards
-      getResidentRewards()
-        .then(data => {
-          const mappedRewards = data.map(reward => ({
-            id: reward._id,
-            label: reward.label,
-            date: reward.date,
-            amount: reward.amount,
-            description: reward.description,
-            type: reward.type
-          }));
-          setRewards(mappedRewards);
-        })
-        .catch(() => setRewards([]));
+        // Refresh rewards
+        const rewardsData = await getResidentRewards();
+        const mappedRewards = rewardsData.map(reward => ({
+          id: reward._id,
+          label: reward.label,
+          date: reward.date,
+          amount: reward.amount,
+          description: reward.description,
+          type: reward.type
+        }));
+        setRewards(mappedRewards);
 
-      // Refresh bills
-      getUserBills()
-        .then(data => {
-          const mappedBills = data.map(bill => ({
-            id: bill._id,
-            title: bill.title,
-            dueDate: bill.dueDate,
-            tags: bill.tags || [],
-            amount: bill.amount,
-            status: bill.status,
-            invoiceNumber: bill.invoiceNumber,
-            collectionId: bill.collectionId
-          }));
-          setBills(mappedBills);
-        })
-        .catch(() => setBills([]));
+        // Refresh bills
+        const billsData = await getUserBills();
+        const mappedBills = billsData.map(bill => ({
+          id: bill.id || bill._id, // <-- FIX: Handle both id formats
+          title: bill.title,
+          dueDate: bill.dueDate,
+          tags: bill.tags || [],
+          amount: bill.amount,
+          status: bill.status,
+          invoiceNumber: bill.invoiceNumber,
+          collectionId: bill.collectionId
+        }));
+        setBills(mappedBills);
+
+        // Refresh current month bills
+        const currentMonthData = await getCurrentMonthBills();
+        const mappedCurrentMonth = currentMonthData.map(bill => ({
+          id: bill.id || bill._id,
+          title: bill.title,
+          dueDate: bill.dueDate,
+          tags: bill.tags || [],
+          amount: bill.amount,
+          status: bill.status,
+          invoiceNumber: bill.invoiceNumber,
+          collectionId: bill.collectionId
+        }));
+        setCurrentMonthBills(mappedCurrentMonth);
+
+        console.log('✅ All payment data refreshed');
+      } catch (error) {
+        console.error('❌ Error refreshing payment data:', error);
+      }
     }
   };
 
@@ -534,22 +520,25 @@ const currentMonthTotal = currentMonthBills.reduce((sum, bill) => sum + bill.amo
           onAddFunds={handleAddFunds}
         />
         <CheckoutModal
-          isOpen={showCheckout}
-          onClose={() => setShowCheckout(false)}
-          selectedBills={bills.filter((b) => selectedBillIds.includes(b.id))}
-          wallet={wallet}
-          rewards={rewards}
-          applyRewards={applyRewards}
-          setApplyRewards={setApplyRewards}
-          useWalletFirst={useWalletFirst}
-          setUseWalletFirst={setUseWalletFirst}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          checkoutStatus={checkoutStatus}
-          onPayNow={handlePayNow}
-          receipt={checkoutReceipt}
-          onViewReceipt={handleCheckoutSuccess}
-        />
+  isOpen={showCheckout}
+  onClose={() => {
+    setShowCheckout(false);
+    refreshAllPaymentData(); // <-- Add this line
+  }}
+  selectedBills={bills.filter((b) => selectedBillIds.includes(b.id))}
+  wallet={wallet}
+  rewards={rewards}
+  applyRewards={applyRewards}
+  setApplyRewards={setApplyRewards}
+  useWalletFirst={useWalletFirst}
+  setUseWalletFirst={setUseWalletFirst}
+  paymentMethod={paymentMethod}
+  setPaymentMethod={setPaymentMethod}
+  checkoutStatus={checkoutStatus}
+  onPayNow={handlePayNow}
+  receipt={checkoutReceipt}
+  onViewReceipt={handleCheckoutSuccess}
+/>
         <ReceiptDrawer
           isOpen={showReceipt}
           onClose={() => {

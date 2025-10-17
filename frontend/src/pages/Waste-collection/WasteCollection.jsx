@@ -183,18 +183,7 @@ const WasteCollection = () => {
           subtitle="User activity"
           isLoading={loading} 
         />
-        <StatCard 
-          title="Avg Fill Level" 
-          value={`${analytics.avgFill}%`} 
-          subtitle="All tracked containers"
-          isLoading={loading} 
-        />
-        <StatCard 
-          title="Reward Points" 
-          value={analytics.rewards} 
-          subtitle="Earned from recycling" 
-          isLoading={loading}
-        />
+        
       </div>
 
       {/* Main two-column layout */}
