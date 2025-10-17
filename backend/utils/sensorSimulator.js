@@ -1,8 +1,14 @@
 // utils/sensorSimulator.js
 import containerService from "../services/containerService.js";
 
+// Timing configuration (in milliseconds)
+const LEVEL_UPDATE_TIME = 5 * 60 * 1000;  // 5 minutes
+const ERROR_FIX_TIME = 6 * 60 * 1000;     // 6 minutes  
+const ERROR_TRIGGER_TIME = 1 * 60 * 1000; // 4 minutes
+
 let levelUpdateInterval = null;
 let errorFixInterval = null;
+let errorTriggerInterval = null;
 
 /**
  * Simulates IoT sensor behavior.
@@ -80,21 +86,67 @@ async function fixRandomContainerError() {
 }
 
 /**
+ * Triggers errors for 2% of total containers every 4 minutes
+ */
+async function triggerRandomContainerErrors() {
+  try {
+    // Get all containers that don't have errors
+    const allContainers = await containerService.getAllContainers();
+    const containersWithoutErrors = allContainers.filter(container => !container.isErrorDetected);
+    
+    if (containersWithoutErrors.length === 0) {
+      console.log(`⚠️ Auto Error Trigger -> No containers available to trigger errors`);
+      return;
+    }
+
+    // Calculate 2% of total containers (minimum 1 container)
+    const totalContainers = allContainers.length;
+    const errorCount = Math.max(1, Math.ceil(totalContainers * 0.02));
+    
+    // Randomly select containers to trigger errors
+    const containersToError = [];
+    for (let i = 0; i < Math.min(errorCount, containersWithoutErrors.length); i++) {
+      const randomIndex = Math.floor(Math.random() * containersWithoutErrors.length);
+      const selectedContainer = containersWithoutErrors.splice(randomIndex, 1)[0];
+      containersToError.push(selectedContainer);
+    }
+
+    // Trigger errors for selected containers
+    for (const container of containersToError) {
+      await containerService.updateContainer(container.containerId, {
+        isErrorDetected: true,
+      });
+
+      console.log(`⚠️ Auto Error Trigger -> Container ${container.containerId}: Error detected`);
+    }
+
+    console.log(`⚠️ Auto Error Trigger -> Triggered errors in ${containersToError.length} containers (${((containersToError.length / totalContainers) * 100).toFixed(1)}% of total)`);
+  } catch (err) {
+    console.error("Auto Error Trigger Error:", err.message);
+  }
+}
+
+/**
  * Starts the automated sensor simulation
- * - Updates container levels by 2% every 1 minute (60,000ms)
+ * - Updates container levels by 2% every 5 minutes (300,000ms)
  * - Fixes one error every 6 minutes (360,000ms)
+ * - Triggers errors in 2% of containers every 4 minutes (240,000ms)
  */
 export function startAutomatedSimulation() {
   console.log("🚀 Starting automated sensor simulation...");
   
-  // Update levels every 1 minute
-  levelUpdateInterval = setInterval(updateAllContainerLevels, 60 * 1000);
+  // Update levels using configured timing
+  levelUpdateInterval = setInterval(updateAllContainerLevels, LEVEL_UPDATE_TIME);
   
-  // Fix one error every 6 minutes
-  errorFixInterval = setInterval(fixRandomContainerError, 6 * 60 * 1000);
+  // Fix one error using configured timing
+  errorFixInterval = setInterval(fixRandomContainerError, ERROR_FIX_TIME);
   
-  console.log("📡 Level updates: every 1 minute (+2%)");
-  console.log("🔧 Error fixes: every 6 minutes (random container)");
+  // Trigger errors using configured timing
+  errorTriggerInterval = setInterval(triggerRandomContainerErrors, ERROR_TRIGGER_TIME);
+  
+  console.log(`📡 Level updates: every ${LEVEL_UPDATE_TIME / (60 * 1000)} minutes (+2%)`);
+  console.log(`🔧 Error fixes: every ${ERROR_FIX_TIME / (60 * 1000)} minutes (random container)`);
+  console.log(`⚠️ Error triggers: every ${ERROR_TRIGGER_TIME / (60 * 1000)} minutes (2% of containers)`);
 }
 
 /**
@@ -109,6 +161,11 @@ export function stopAutomatedSimulation() {
   if (errorFixInterval) {
     clearInterval(errorFixInterval);
     errorFixInterval = null;
+  }
+  
+  if (errorTriggerInterval) {
+    clearInterval(errorTriggerInterval);
+    errorTriggerInterval = null;
   }
   
   console.log("⏹️ Automated sensor simulation stopped");

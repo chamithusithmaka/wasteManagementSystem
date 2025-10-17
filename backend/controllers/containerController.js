@@ -158,6 +158,19 @@ class ContainerController {
       return res.status(500).json({ error: err.message });
     }
   }
+
+  async deactivate(req, res) {
+    try {
+      const deactivated = await containerService.deactivateContainer(req.params.id);
+      if (!deactivated) return res.status(404).json({ message: "Container not found" });
+      return res.json({ 
+        message: "Container deactivated successfully",
+        container: deactivated
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 }
 
 export default new ContainerController();

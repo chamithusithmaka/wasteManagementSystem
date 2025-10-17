@@ -17,6 +17,8 @@ router.get("/:id", containerController.getById);
 router.put("/:id", containerController.update);
 // Update only address and city via location route
 router.put("/:id/location", containerController.sendLocation);
+// Deactivate container (set to Out of Service)
+router.put("/:id/deactivate", containerController.deactivate);
 router.delete("/:id", containerController.delete);
 
 export default router;

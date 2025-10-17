@@ -56,7 +56,7 @@ const ContainerSchema = new mongoose.Schema({
   status: {
     type: String,
     required: false,
-    enum: ['Available', 'Full', 'Needs Maintenance', 'Out of Service'],
+    enum: ['Available', 'Near Full', 'Full', 'Needs Maintenance', 'Out of Service'],
     default: 'Available', // Auto-set to Available when creating new container
   },
   installationDate: {

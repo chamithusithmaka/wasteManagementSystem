@@ -119,9 +119,16 @@ class ContainerService {
     if (updateData.containerLevel !== undefined) {
       if (updateData.containerLevel >= 95) {
         updateData.status = 'Full';
-      } else if (updateData.containerLevel < 80 && updateData.status === 'Full') {
+      } else if (updateData.containerLevel >= 80) {
+        updateData.status = 'Near Full';
+      } else if (updateData.containerLevel < 80 && (updateData.status === 'Full' || updateData.status === 'Near Full')) {
         updateData.status = 'Available';
       }
+    }
+
+    // Business logic: If isErrorDetected is true, set status to Needs Maintenance
+    if (updateData.isErrorDetected === true) {
+      updateData.status = 'Needs Maintenance';
     }
 
     // Business logic: If marking as Out of Service, set error flag
@@ -155,7 +162,7 @@ class ContainerService {
    */
   async updateContainerStatus(containerId, status) {
     // Business logic: Validate status
-    const validStatuses = ['Available', 'Full', 'Needs Maintenance', 'Out of Service'];
+    const validStatuses = ['Available', 'Near Full', 'Full', 'Needs Maintenance', 'Out of Service'];
     if (!validStatuses.includes(status)) {
       throw new Error(`Status must be one of: ${validStatuses.join(', ')}`);
     }
@@ -269,6 +276,25 @@ class ContainerService {
     return await containerRepository.updateByContainerId(containerId, {
       status: 'Available',
       isErrorDetected: false
+    });
+  }
+
+  /**
+   * Deactivate container (set to Out of Service)
+   * @param {String} containerId - The unique container ID
+   * @returns {Promise<Object|null>} Updated container
+   */
+  async deactivateContainer(containerId) {
+    // Business logic: Check if container exists before deactivating
+    const container = await containerRepository.findByContainerId(containerId);
+    if (!container) {
+      throw new Error(`Container ${containerId} not found`);
+    }
+
+    // Business logic: Set to Out of Service and mark as error detected
+    return await containerRepository.updateByContainerId(containerId, {
+      status: 'Out of Service',
+      isErrorDetected: true
     });
   }
 }
