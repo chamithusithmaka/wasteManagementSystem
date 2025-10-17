@@ -662,9 +662,13 @@ const ContainerManagement = () => {
                 >
                   <option value="">Select Type</option>
                   <option value="organic">Organic</option>
-                  <option value="recyclable">Recyclable</option>
-                  <option value="hazardous">Hazardous</option>
-                  <option value="general">General</option>
+                  <option value="polythene">Polythene</option>
+                  <option value="plastic">Plastic</option>
+                  <option value="glass">Glass</option>
+                  <option value="metal">Metal</option>
+                  <option value="paper">Paper</option>
+                  <option value="cardboard">Cardboard</option>
+                  <option value="mixed">Mixed</option>
                 </select>
               </div>
 
