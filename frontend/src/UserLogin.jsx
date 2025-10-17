@@ -20,19 +20,11 @@ const UserLogin = () => {
     }
     
     try {
-      // Make API call to login
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      const data = await UserService.login(username, password);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setError(data.message || 'Login failed. Please check your credentials.');
+      // Validate response data before proceeding
+      if (!data || !data.token || !data.user) {
+        setError((data && data.message) || 'Login failed. Invalid response.');
         return;
       }
       
@@ -45,11 +37,11 @@ const UserLogin = () => {
       }
       
       setError('');
-      // Navigate to dashboard after successful login
+      
+      // Navigate to dashboard
       navigate('/dashboard');
     } catch (err) {
-      console.error('Login error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      setError(err.message || 'Network error. Please try again.');
     }
   };
 
@@ -62,13 +54,20 @@ const UserLogin = () => {
     setAdminError('');
     try {
       const data = await UserService.login(adminUsername, adminPassword);
+      
       if (!data.token || !data.user) {
         setAdminError(data.message || 'Login failed.');
         return;
       }
+      
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       if (data.user.role === 'admin') {
-        navigate('/admin-dashboard');
+        // Add a small delay to ensure token is stored
+        setTimeout(() => {
+          navigate('/admin-dashboard');
+        }, 100);
       } else {
         setAdminError('Not an admin account.');
       }

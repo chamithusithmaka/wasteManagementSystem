@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import './App.css';
@@ -8,8 +7,8 @@ import PaymentsPage from './pages/PaymentsPage';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
-import SchedulePickup from './pages/Waste-collection/SchedulePickup'; // added route component
 import AdminDashboard from './pages/AdminDashboard';
+import SchedulePickup from './pages/Waste-collection/SchedulePickup'; // added route component
 import WasteCollection from './pages/Waste-collection/WasteCollection';
 import WasteLevel from './pages/WasteLevel';
 import Payments from './pages/Payments';
@@ -20,6 +19,10 @@ import ContainerDashboard from './pages/ContainerManagement/ContainerDashboard';
 import ContainerManagementDashboard from './pages/ContainerManagement/ContainerManagementDashboard';
 import ContainerForm from './pages/ContainerManagement/ContainerForm';
 import ContainerListPage from './pages/ContainerManagement/ContainerListPage';
+import WasteCollectionManagement from './pages/admin/WasteCollectionManagement';
+import WasteCollectionDetails from './pages/admin/WasteCollectionDetails';
+import ContainerManagement from './pages/admin/ContainerManagement';
+import ContainerDetails from './pages/admin/ContainerDetails';
 
 import { UserProvider } from './context/UserContext';
 
@@ -60,6 +63,14 @@ function App() {
               <Profile />
             </Layout>
           } />
+          
+          {/* Admin routes - use nested routes under /admin */}
+          <Route path="/admin/*" element={<AdminLayout />} />
+          <Route path="/admin-dashboard" element={
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
+          } />
           <Route path="/report-generation" element={
             <AdminLayout>
               <ReportGenerationPage />
@@ -68,11 +79,6 @@ function App() {
           <Route path="/report-visualization" element={
             <AdminLayout>
               <ReportVisualizationPage />
-            </AdminLayout>
-          } />
-          <Route path="/admin-dashboard" element={
-            <AdminLayout>
-              <AdminDashboard />
             </AdminLayout>
           } />
           <Route path="/schedule" element={
@@ -102,8 +108,32 @@ function App() {
               <ContainerListPage />
             </AdminLayout>
           } />
+          <Route path="/admin/waste-collection" element={
+            <AdminLayout>
+              <WasteCollectionManagement />
+            </AdminLayout>
+          } />
+          <Route path="/admin/waste-collection/:id" element={
+            <AdminLayout>
+            <WasteCollectionDetails />
+            </AdminLayout>
+            } />
+          <Route path="/admin/containers" element={
+            <AdminLayout>
+            <ContainerManagement />
+            </AdminLayout>} 
+            />
+          <Route path="/admin/containers/full" element={
+            <AdminLayout>
+            <ContainerManagement />
+            </AdminLayout>}
+             />
+          <Route path="/admin/containers/:id" element={
+            <AdminLayout>
+              <ContainerDetails />
+            </AdminLayout>
+          } />
         </Routes>
-
       </BrowserRouter>
     </UserProvider>
   );

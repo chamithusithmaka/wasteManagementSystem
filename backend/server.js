@@ -8,6 +8,7 @@ import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js";
 import rewardRoutes from "./routes/rewardRoutes.js";
 import billRoutes from './routes/billRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
+import reportRoutes from "./routes/reportRoutes.js";
 import containerRoutes from "./routes/containerRoutes.js";
 import { simulateSensorData, startAutomatedSimulation } from "./utils/sensorSimulator.js";
 
@@ -46,6 +47,10 @@ app.use('/api/waste-collection', wasteCollectionRoutes);
 
 // Import hooks to activate them
 import './hooks/wasteCollectionHooks.js';
+
+app.use("/api/waste-collection", wasteCollectionRoutes); // Add waste collection routes
+app.use("/api/reports", reportRoutes);
+app.use("/api/containers", containerRoutes);
 
 // Example test route (for CRUD later)
 app.get("/api/test", (req, res) => {
