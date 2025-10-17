@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import WasteCollectionManagement from '../pages/admin/WasteCollectionManagement';
+import WasteCollectionDetails from '../pages/admin/WasteCollectionDetails';
+import ContainerManagement from '../pages/admin/ContainerManagement';
+import ContainerDetails from '../pages/admin/ContainerDetails';
+import ReportGenerationPage from '../pages/admin/ReportGenerationPage';
+import ReportVisualizationPage from '../pages/admin/ReportVisualizationPage';
+import Profile from '../pages/admin/Profile';
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

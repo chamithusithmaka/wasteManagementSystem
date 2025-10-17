@@ -1,7 +1,5 @@
 import Wallet from '../models/Wallet.js';
 import Transaction from '../models/Transaction.js'; // Add this import
-import TransactionService from '../services/transactionService.js';
-import nodemailer from 'nodemailer';
 
 // Get wallet by residentId
 export const getWallet = async (req, res) => {
