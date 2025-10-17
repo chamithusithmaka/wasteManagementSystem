@@ -16,6 +16,10 @@ import Payments from './pages/Payments';
 import Profile from './pages/Profile';
 import ReportGenerationPage from './pages/ReportGenerationPage';
 import ReportVisualizationPage from './pages/ReportVisualizationPage';
+import ContainerDashboard from './pages/ContainerManagement/ContainerDashboard';
+import ContainerManagementDashboard from './pages/ContainerManagement/ContainerManagementDashboard';
+import ContainerForm from './pages/ContainerManagement/ContainerForm';
+import ContainerListPage from './pages/ContainerManagement/ContainerListPage';
 
 import { UserProvider } from './context/UserContext';
 
@@ -76,6 +80,28 @@ function App() {
               <SchedulePickup />
             </Layout>
           } />  {/* added route */}
+
+          {/* Container Management Routes */}
+          <Route path="/container-dashboard" element={
+            <AdminLayout>
+              <ContainerDashboard />
+            </AdminLayout>
+          } />
+          <Route path="/container-management" element={
+            <AdminLayout>
+              <ContainerManagementDashboard />
+            </AdminLayout>
+          } />
+          <Route path="/add-container" element={
+            <AdminLayout>
+              <ContainerForm />
+            </AdminLayout>
+          } />
+          <Route path="/container-list" element={
+            <AdminLayout>
+              <ContainerListPage />
+            </AdminLayout>
+          } />
         </Routes>
 
       </BrowserRouter>
