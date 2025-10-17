@@ -11,6 +11,11 @@ const wasteCollectionSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  province: {
+    type: String,
+    required: true,
+    trim: true
+  },
   wasteType: {
     type: String,
     enum: ['Recyclables', 'General Waste', 'Compost', 'Hazardous'],

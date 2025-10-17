@@ -1,11 +1,11 @@
+import WasteCollectionRepository from '../repositories/wasteCollectionRepository.js';
 import WasteCollection from '../models/WasteCollection.js';
 
 class WasteCollectionService {
   // Create a new waste collection pickup
   static async createPickup(pickupData) {
     try {
-      const pickup = new WasteCollection(pickupData);
-      return await pickup.save();
+      return await WasteCollectionRepository.create(pickupData);
     } catch (error) {
       throw error;
     }
@@ -14,10 +14,7 @@ class WasteCollectionService {
   // Get upcoming pickups for a user
   static async getUserPickups(userId, filter = {}) {
     try {
-      const query = { userId, ...filter };
-      return await WasteCollection.find(query)
-                                  .sort({ scheduledDate: 1, scheduledTime: 1 })
-                                  .exec();
+      return await WasteCollectionRepository.findByUserId(userId, filter);
     } catch (error) {
       throw error;
     }
@@ -26,7 +23,7 @@ class WasteCollectionService {
   // Get pickup by ID
   static async getPickupById(pickupId) {
     try {
-      return await WasteCollection.findById(pickupId);
+      return await WasteCollectionRepository.findById(pickupId);
     } catch (error) {
       throw error;
     }
@@ -35,11 +32,7 @@ class WasteCollectionService {
   // Update pickup
   static async updatePickup(pickupId, updates) {
     try {
-      return await WasteCollection.findByIdAndUpdate(
-        pickupId,
-        { $set: updates },
-        { new: true, runValidators: true }
-      );
+      return await WasteCollectionRepository.updateById(pickupId, updates);
     } catch (error) {
       throw error;
     }
@@ -48,11 +41,7 @@ class WasteCollectionService {
   // Cancel pickup
   static async cancelPickup(pickupId) {
     try {
-      return await WasteCollection.findByIdAndUpdate(
-        pickupId,
-        { $set: { status: 'Cancelled' } },
-        { new: true }
-      );
+      return await WasteCollectionRepository.updateById(pickupId, { status: 'Cancelled' });
     } catch (error) {
       throw error;
     }
@@ -61,20 +50,7 @@ class WasteCollectionService {
   // Admin: Get all pickups with filtering and pagination
   static async getAllPickups(filter = {}, page = 1, limit = 20) {
     try {
-      const skip = (page - 1) * limit;
-      const pickups = await WasteCollection.find(filter)
-                                           .sort({ scheduledDate: 1, scheduledTime: 1 })
-                                           .skip(skip)
-                                           .limit(limit)
-                                           .exec();
-      
-      const total = await WasteCollection.countDocuments(filter);
-      return {
-        pickups,
-        totalPages: Math.ceil(total / limit),
-        currentPage: page,
-        total
-      };
+      return await WasteCollectionRepository.findWithPagination(filter, page, limit);
     } catch (error) {
       throw error;
     }
@@ -83,10 +59,9 @@ class WasteCollectionService {
   // Admin: Assign staff to pickup
   static async assignStaff(pickupId, staffName) {
     try {
-      return await WasteCollection.findByIdAndUpdate(
+      return await WasteCollectionRepository.updateById(
         pickupId,
-        { $set: { assignedStaff: staffName, status: 'In Progress' } },
-        { new: true }
+        { assignedStaff: staffName, status: 'In Progress' }
       );
     } catch (error) {
       throw error;
@@ -94,22 +69,38 @@ class WasteCollectionService {
   }
 
   // Admin: Mark pickup as complete
-  static async completePickup(pickupId, data) {
+  static async completePickup(id, { wasteAmount }) {
     try {
-      const { wasteAmount } = data;
-      return await WasteCollection.findByIdAndUpdate(
-        pickupId,
-        { 
-          $set: { 
-            status: 'Completed', 
+      console.log(`WasteCollectionService: Completing pickup ${id} with amount ${wasteAmount}`);
+
+      // 1. Update using Mongoose model (friend's logic)
+      const pickup = await WasteCollection.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: 'Completed',
             completedAt: new Date(),
             wasteAmount: wasteAmount || 0
-          } 
+          }
         },
-        { new: true }
+        { new: true, runValidators: true }
       );
+
+      // 2. Also update using repository (your logic)
+      await WasteCollectionRepository.updateById(
+        id,
+        { 
+          status: 'Completed', 
+          completedAt: new Date(),
+          wasteAmount: wasteAmount || 0
+        }
+      );
+
+      console.log(`WasteCollectionService: Pickup completed, status: ${pickup.status}`);
+      return pickup;
     } catch (error) {
-      throw error;
+      console.error('Error completing pickup:', error);
+      throw new Error(`Failed to complete pickup: ${error.message}`);
     }
   }
 
@@ -120,21 +111,21 @@ class WasteCollectionService {
       currentMonth.setDate(1); // First day of current month
       
       // Count completed this month
-      const completedThisMonth = await WasteCollection.countDocuments({
+      const completedThisMonth = await WasteCollectionRepository.countDocuments({
         userId,
         status: 'Completed',
         completedAt: { $gte: currentMonth }
       });
       
       // Count upcoming pickups
-      const upcomingPickups = await WasteCollection.countDocuments({
+      const upcomingPickups = await WasteCollectionRepository.countDocuments({
         userId,
         status: 'Scheduled',
         scheduledDate: { $gte: new Date() }
       });
       
       // Calculate average container fill level
-      const fillLevelResult = await WasteCollection.aggregate([
+      const fillLevelResult = await WasteCollectionRepository.aggregate([
         { $match: { userId, containerFillLevel: { $ne: null } } },
         { $group: { _id: null, avgFill: { $avg: '$containerFillLevel' } } }
       ]);
