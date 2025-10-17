@@ -1,137 +1,173 @@
-// Controller for report generation (SOLID, no code smells)
-import WasteCollection from '../models/WasteCollection.js';
-import Container from '../models/Container.js';
 import * as reportService from '../services/reportService.js';
 
+// Constants to avoid magic strings
+const REPORT_TYPES = {
+  WASTE_COLLECTION_SUMMARY: 'Waste Collection Summary',
+  SENSOR_DATA: 'Sensor Data'
+};
+
+const HTTP_STATUS = {
+  OK: 200,
+  INTERNAL_SERVER_ERROR: 500
+};
+
+const ERROR_MESSAGES = {
+  REPORT_GENERATION_FAILED: 'Report generation failed',
+  STATUS_COUNTS_FAILED: 'Failed to get status counts',
+  SENSOR_STATUS_COUNTS_FAILED: 'Failed to get sensor data status counts',
+  WASTE_TYPE_COUNTS_FAILED: 'Failed to get waste collection counts by type',
+  CONTAINER_TYPE_COUNTS_FAILED: 'Failed to get sensor data counts by container type'
+};
+
 /**
- * Generate analytical report based on query params (excluding location)
- * Accepts: wasteType, status, startDate, endDate, reportType
- * Returns: aggregated data for frontend visualization
+ * Helper function to create standardized API responses
+ */
+const createApiResponse = (success, data = null, message = null, error = null) => ({
+  success,
+  ...(data && { data }),
+  ...(message && { message }),
+  ...(error && { error })
+});
+
+/**
+ * Helper function to handle async operations with consistent error handling
+ */
+const handleAsyncOperation = async (operation, errorMessage) => {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new Error(`${errorMessage}: ${error.message}`);
+  }
+};
+
+/**
+ * Validate report type parameter
+ */
+const isValidReportType = (reportType) => {
+  return Object.values(REPORT_TYPES).includes(reportType);
+};
+
+/**
+ * Extract and validate request parameters
+ * Applies defensive programming principles
+ */
+const extractReportParams = (body) => {
+  const { wasteType, status, startDate, endDate, reportType, province, containerType, city } = body;
+  
+  // Validate dates if provided
+  const parsedStartDate = startDate ? new Date(startDate) : null;
+  const parsedEndDate = endDate ? new Date(endDate) : null;
+  
+  if (parsedStartDate && isNaN(parsedStartDate.getTime())) {
+    throw new Error('Invalid start date format');
+  }
+  
+  if (parsedEndDate && isNaN(parsedEndDate.getTime())) {
+    throw new Error('Invalid end date format');
+  }
+  
+  if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+    throw new Error('Start date cannot be after end date');
+  }
+  
+  return {
+    wasteType: wasteType?.trim(),
+    status: status?.trim(),
+    startDate: parsedStartDate?.toISOString(),
+    endDate: parsedEndDate?.toISOString(),
+    reportType: reportType?.trim(),
+    province: province?.trim(),
+    containerType: containerType?.trim(),
+    city: city?.trim()
+  };
+};
+
+/**
+ * Generate analytical report based on query params
+ * Single responsibility: Coordinate report generation and return response
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
  */
 export const generateReport = async (req, res) => {
   try {
-    const { wasteType, status, startDate, endDate, reportType } = req.body;
-    // Build query object for WasteCollection
-    const query = {};
-    if (wasteType) query.wasteType = wasteType;
-    if (status) query.status = status;
-    if (startDate || endDate) {
-      query.scheduledDate = {};
-      if (startDate) query.scheduledDate.$gte = new Date(startDate);
-      if (endDate) query.scheduledDate.$lte = new Date(endDate);
-    }
+    const params = extractReportParams(req.body);
+    
+    const result = await handleAsyncOperation(
+      () => reportService.generateReportByType(params),
+      ERROR_MESSAGES.REPORT_GENERATION_FAILED
+    );
 
-    let result;
-    switch (reportType) {
-      case 'Waste Collection Summary': {
-        // Fetch data from WasteCollection
-        const collections = await WasteCollection.find(query).lean();
-        result = {
-          totalCollections: collections.length,
-          totalWaste: collections.reduce((sum, c) => sum + (c.wasteAmount || 0), 0),
-          byStatus: collections.reduce((acc, c) => {
-            acc[c.status] = (acc[c.status] || 0) + 1;
-            return acc;
-          }, {})
-        };
-        break;
-      }
-      case 'Sensor Data': {
-        // Build query for Container model
-        const containerQuery = {};
-        // Accept both 'wasteType' and 'containerType' for compatibility
-        const containerType = req.body.containerType || wasteType;
-        if (containerType) containerQuery.containerType = containerType;
-        if (status) containerQuery.status = status;
-        if (req.body.city) containerQuery['containerLocation.city'] = req.body.city;
-        if (startDate || endDate) {
-          // Use lastUpdatedDate for sensor data time filtering
-          containerQuery.lastUpdatedDate = {};
-          if (startDate) containerQuery.lastUpdatedDate.$gte = new Date(startDate);
-          if (endDate) containerQuery.lastUpdatedDate.$lte = new Date(endDate);
-        }
-        const containers = await Container.find(containerQuery).lean();
-        // Summary counts by status
-        const byStatus = containers.reduce((acc, c) => {
-          acc[c.status] = (acc[c.status] || 0) + 1;
-          return acc;
-        }, {});
-        // Summary counts by type
-        const byType = containers.reduce((acc, c) => {
-          acc[c.containerType] = (acc[c.containerType] || 0) + 1;
-          return acc;
-        }, {});
-        // Summary counts by city
-        const byCity = containers.reduce((acc, c) => {
-          const city = c.containerLocation?.city || 'Unknown';
-          acc[city] = (acc[city] || 0) + 1;
-          return acc;
-        }, {});
-        // Calculate total container capacity and total container level
-        const totalContainerCapacity = containers.reduce((sum, c) => sum + (c.containerCapacity || 0), 0);
-        const totalContainerLevel = containers.reduce((sum, c) => sum + (c.containerLevel || 0), 0);
-        result = {
-          totalContainers: containers.length,
-          totalContainerCapacity,
-          totalContainerLevel,
-          byStatus,
-          byType,
-          byCity,
-          containers: containers.map(c => ({
-            containerId: c.containerId,
-            type: c.containerType,
-            location: c.containerLocation,
-            capacity: c.containerCapacity,
-            fillLevel: c.containerLevel,
-            status: c.status,
-            lastUpdated: c.lastUpdatedDate,
-            isErrorDetected: c.isErrorDetected
-          }))
-        };
-        break;
-      }
-      default: {
-        // Default: WasteCollection with filters
-        const collections = await WasteCollection.find(query).lean();
-        result = collections;
-      }
-    }
-    return res.status(200).json({ success: true, data: result });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: 'Report generation failed', error: err.message });
+    return res.status(HTTP_STATUS.OK).json(createApiResponse(true, result));
+  } catch (error) {
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
+      createApiResponse(false, null, ERROR_MESSAGES.REPORT_GENERATION_FAILED, error.message)
+    );
+  }
+};
+
+/**
+ * Generic count handler to eliminate code duplication
+ * Single responsibility: Handle count requests with consistent error handling
+ */
+const handleCountRequest = async (req, res, serviceMethod, errorMessage) => {
+  try {
+    const result = await handleAsyncOperation(serviceMethod, errorMessage);
+    return res.status(HTTP_STATUS.OK).json(createApiResponse(true, result));
+  } catch (error) {
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
+      createApiResponse(false, null, errorMessage, error.message)
+    );
   }
 };
 
 /**
  * GET status counts endpoint
- * Query params optional: wasteType, startDate, endDate, status
+ * Single responsibility: Return waste collection status counts
  */
 export const getStatusCounts = async (req, res) => {
-  try {
-    // Return counts for all documents (no filters)
-    const { counts, total } = await reportService.getCountsByStatus();
-
-    return res.status(200).json({ success: true, data: { counts, total } });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: 'Failed to get status counts', error: err.message });
-  }
+  await handleCountRequest(
+    req, 
+    res, 
+    reportService.getCountsByStatus, 
+    ERROR_MESSAGES.STATUS_COUNTS_FAILED
+  );
 };
 
 /**
  * GET sensor data status counts endpoint
- * Returns: Count of containers by each status
+ * Single responsibility: Return container status counts
  */
 export const getSensorDataByStatus = async (req, res) => {
-  try {
-    // Return counts for all sensor data (no filters)
-    const { counts, total } = await reportService.getSensorDataCountsByStatus();
+  await handleCountRequest(
+    req, 
+    res, 
+    reportService.getSensorDataCountsByStatus, 
+    ERROR_MESSAGES.SENSOR_STATUS_COUNTS_FAILED
+  );
+};
 
-    return res.status(200).json({ success: true, data: { counts, total } });
-  } catch (err) {
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to get sensor data status counts', 
-      error: err.message 
-    });
-  }
+/**
+ * GET waste collection counts by waste type endpoint
+ * Single responsibility: Return waste type distribution
+ */
+export const getWasteCollectionByType = async (req, res) => {
+  await handleCountRequest(
+    req, 
+    res, 
+    reportService.getCountsByWasteType, 
+    ERROR_MESSAGES.WASTE_TYPE_COUNTS_FAILED
+  );
+};
+
+/**
+ * GET sensor data counts by container type endpoint
+ * Single responsibility: Return container type distribution
+ */
+export const getSensorDataByContainerType = async (req, res) => {
+  await handleCountRequest(
+    req, 
+    res, 
+    reportService.getSensorDataCountsByContainerType, 
+    ERROR_MESSAGES.CONTAINER_TYPE_COUNTS_FAILED
+  );
 };

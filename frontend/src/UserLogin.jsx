@@ -20,6 +20,7 @@ const UserLogin = () => {
     }
     
     try {
+      console.log('Attempting regular login...'); // Debug log
       // Make API call to login
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
@@ -30,6 +31,7 @@ const UserLogin = () => {
       });
       
       const data = await response.json();
+      console.log('Regular login response:', data); // Debug log
       
       if (!response.ok) {
         setError(data.message || 'Login failed. Please check your credentials.');
@@ -45,6 +47,7 @@ const UserLogin = () => {
       }
       
       setError('');
+      console.log('Navigating to dashboard...'); // Debug log
       // Navigate to dashboard after successful login
       navigate('/dashboard');
     } catch (err) {
@@ -61,18 +64,31 @@ const UserLogin = () => {
     }
     setAdminError('');
     try {
+      console.log('Attempting admin login...'); // Debug log
       const data = await UserService.login(adminUsername, adminPassword);
+      console.log('Login response:', data); // Debug log
+      
       if (!data.token || !data.user) {
+        console.log('Login failed - missing token or user:', { token: !!data.token, user: !!data.user }); // Debug log
         setAdminError(data.message || 'Login failed.');
         return;
       }
+      
+      console.log('User role:', data.user.role); // Debug log
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       if (data.user.role === 'admin') {
-        navigate('/admin-dashboard');
+        console.log('Navigating to admin dashboard...'); // Debug log
+        // Add a small delay to ensure token is stored
+        setTimeout(() => {
+          navigate('/admin-dashboard');
+        }, 100);
       } else {
         setAdminError('Not an admin account.');
       }
     } catch (err) {
+      console.error('Admin login error:', err); // Debug log
       setAdminError('Network error. Please try again.');
     }
   };

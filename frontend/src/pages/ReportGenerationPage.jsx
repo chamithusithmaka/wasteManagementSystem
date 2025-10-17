@@ -5,8 +5,6 @@ import { Tooltip } from 'react-tooltip';
 const REPORT_TYPES = [
   'Waste Collection Summary',
   'Sensor Data',
-  'Truck Activity',
-  'Recycling Trends',
 ];
 
 const PARAMETERS = [
@@ -67,6 +65,8 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [wasteTypeDropdownOpen, setWasteTypeDropdownOpen] = useState(false);
   const [collectionMethodDropdownOpen, setCollectionMethodDropdownOpen] = useState(false);
+  const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
+  const [containerTypeDropdownOpen, setContainerTypeDropdownOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 py-10">
@@ -152,22 +152,6 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
             {/* Conditional filter fields based on report type */}
             {reportType === 'Waste Collection Summary' && (
               <>
-                {/* Location input */}
-                <div className="flex flex-col min-w-[220px]">
-                  <div className="flex items-center mb-2">
-                    <label className="text-green-700 font-semibold text-lg mr-2">Location</label>
-                    <span className="ml-1 cursor-pointer" data-tooltip-id="tip-location">🛈</span>
-                    <Tooltip id="tip-location" place="right" content={PARAMETERS[0].tooltip} />
-                  </div>
-                  <input
-                    type="text"
-                    value={params.location || ''}
-                    onChange={(e) => handleParamChange('location', e.target.value)}
-                    placeholder="Enter location"
-                    className={`px-4 py-3 rounded-lg border-2 ${errors.location ? 'border-red-400' : 'border-green-300'} bg-white focus:bg-green-50 focus:border-green-600 focus:ring-2 focus:ring-green-200 outline-none text-lg transition-all duration-300 ease-in-out`}
-                  />
-                  {errors.location && <span className="text-red-600 text-sm mt-1 block">{errors.location}</span>}
-                </div>
                 {/* Waste Type custom dropdown */}
                 <div className="flex flex-col min-w-[220px] relative">
                   <div className="flex items-center mb-2">
@@ -248,6 +232,46 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                   </div>
                   {errors.collectionStatus && <span className="text-red-600 text-sm mt-1 block">{errors.collectionStatus}</span>}
                 </div>
+                {/* Province dropdown */}
+                <div className="flex flex-col min-w-[220px] relative">
+                  <div className="flex items-center mb-2">
+                    <label className="text-green-700 font-semibold text-lg mr-2">Province</label>
+                    <span className="ml-1 cursor-pointer" data-tooltip-id="tip-province">🛈</span>
+                    <Tooltip id="tip-province" place="right" content="Select a province in Sri Lanka." />
+                  </div>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className={`w-full px-4 py-3 rounded-lg border-2 ${errors.province ? 'border-red-400' : 'border-green-300'} bg-white text-left text-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out shadow-sm hover:shadow-lg flex items-center justify-between`}
+                      onClick={() => setProvinceDropdownOpen((open) => !open)}
+                      aria-haspopup="listbox"
+                      aria-expanded={provinceDropdownOpen}
+                    >
+                      <span>{params.province ? params.province : 'Select province'}</span>
+                      <svg className={`ml-2 h-5 w-5 text-green-600 transition-transform duration-300 ${provinceDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <ul
+                      className={`absolute left-0 w-full mt-2 bg-white border border-green-200 rounded-lg shadow-lg z-10 transition-all duration-300 ease-in-out ${provinceDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
+                      role="listbox"
+                      tabIndex={-1}
+                    >
+                      <li
+                        className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.province ? 'bg-green-50 text-green-700' : ''}`}
+                        onClick={() => { handleParamChange('province', ''); setProvinceDropdownOpen(false); }}
+                      >Select province</li>
+                      {['Western', 'Central', 'Southern', 'Northern', 'Eastern', 'North Western', 'North Central', 'Uva', 'Sabaragamuwa'].map((province) => (
+                        <li
+                          key={province}
+                          className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.province === province ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
+                          onClick={() => { handleParamChange('province', province); setProvinceDropdownOpen(false); }}
+                        >{province}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {errors.province && <span className="text-red-600 text-sm mt-1 block">{errors.province}</span>}
+                </div>
               </>
             )}
 
@@ -264,29 +288,29 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                     <button
                       type="button"
                       className={`w-full px-4 py-3 rounded-lg border-2 ${errors.containerType ? 'border-red-400' : 'border-green-300'} bg-white text-left text-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out shadow-sm hover:shadow-lg flex items-center justify-between`}
-                      onClick={() => setWasteTypeDropdownOpen((open) => !open)}
+                      onClick={() => setContainerTypeDropdownOpen((open) => !open)}
                       aria-haspopup="listbox"
-                      aria-expanded={wasteTypeDropdownOpen}
+                      aria-expanded={containerTypeDropdownOpen}
                     >
                       <span>{params.containerType ? params.containerType : 'Select container type'}</span>
-                      <svg className={`ml-2 h-5 w-5 text-green-600 transition-transform duration-300 ${wasteTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <svg className={`ml-2 h-5 w-5 text-green-600 transition-transform duration-300 ${containerTypeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
                     <ul
-                      className={`absolute left-0 w-full mt-2 bg-white border border-green-200 rounded-lg shadow-lg z-10 transition-all duration-300 ease-in-out ${wasteTypeDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
+                      className={`absolute left-0 w-full mt-2 bg-white border border-green-200 rounded-lg shadow-lg z-10 transition-all duration-300 ease-in-out ${containerTypeDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
                       role="listbox"
                       tabIndex={-1}
                     >
                       <li
                         className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.containerType ? 'bg-green-50 text-green-700' : ''}`}
-                        onClick={() => { handleParamChange('containerType', ''); setWasteTypeDropdownOpen(false); }}
+                        onClick={() => { handleParamChange('containerType', ''); setContainerTypeDropdownOpen(false); }}
                       >Select container type</li>
                       {['organic', 'polythene', 'plastic', 'glass', 'metal', 'paper', 'cardboard', 'mixed'].map((type) => (
                         <li
                           key={type}
                           className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.containerType === type ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
-                          onClick={() => { handleParamChange('containerType', type); setWasteTypeDropdownOpen(false); }}
+                          onClick={() => { handleParamChange('containerType', type); setContainerTypeDropdownOpen(false); }}
                         >{type}</li>
                       ))}
                     </ul>
@@ -333,21 +357,45 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                   </div>
                   {errors.containerStatus && <span className="text-red-600 text-sm mt-1 block">{errors.containerStatus}</span>}
                 </div>
-                {/* City input */}
-                <div className="flex flex-col min-w-[220px]">
+                {/* Province dropdown */}
+                <div className="flex flex-col min-w-[220px] relative">
                   <div className="flex items-center mb-2">
-                    <label className="text-green-700 font-semibold text-lg mr-2">City</label>
-                    <span className="ml-1 cursor-pointer" data-tooltip-id="tip-city">🛈</span>
-                    <Tooltip id="tip-city" place="right" content="Enter the city name to filter containers." />
+                    <label className="text-green-700 font-semibold text-lg mr-2">Province</label>
+                    <span className="ml-1 cursor-pointer" data-tooltip-id="tip-province-sensor">🛈</span>
+                    <Tooltip id="tip-province-sensor" place="right" content="Select a province in Sri Lanka." />
                   </div>
-                  <input
-                    type="text"
-                    value={params.city || ''}
-                    onChange={(e) => handleParamChange('city', e.target.value)}
-                    placeholder="Enter city"
-                    className={`px-4 py-3 rounded-lg border-2 ${errors.city ? 'border-red-400' : 'border-green-300'} bg-white focus:bg-green-50 focus:border-green-600 focus:ring-2 focus:ring-green-200 outline-none text-lg transition-all duration-300 ease-in-out`}
-                  />
-                  {errors.city && <span className="text-red-600 text-sm mt-1 block">{errors.city}</span>}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className={`w-full px-4 py-3 rounded-lg border-2 ${errors.province ? 'border-red-400' : 'border-green-300'} bg-white text-left text-lg focus:outline-none focus:ring-4 focus:ring-green-400 transition-all duration-300 ease-in-out shadow-sm hover:shadow-lg flex items-center justify-between`}
+                      onClick={() => setProvinceDropdownOpen((open) => !open)}
+                      aria-haspopup="listbox"
+                      aria-expanded={provinceDropdownOpen}
+                    >
+                      <span>{params.province ? params.province : 'Select province'}</span>
+                      <svg className={`ml-2 h-5 w-5 text-green-600 transition-transform duration-300 ${provinceDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <ul
+                      className={`absolute left-0 w-full mt-2 bg-white border border-green-200 rounded-lg shadow-lg z-10 transition-all duration-300 ease-in-out ${provinceDropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}
+                      role="listbox"
+                      tabIndex={-1}
+                    >
+                      <li
+                        className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.province ? 'bg-green-50 text-green-700' : ''}`}
+                        onClick={() => { handleParamChange('province', ''); setProvinceDropdownOpen(false); }}
+                      >Select province</li>
+                      {['Western', 'Central', 'Southern', 'Northern', 'Eastern', 'North Western', 'North Central', 'Uva', 'Sabaragamuwa'].map((province) => (
+                        <li
+                          key={province}
+                          className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.province === province ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}
+                          onClick={() => { handleParamChange('province', province); setProvinceDropdownOpen(false); }}
+                        >{province}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {errors.province && <span className="text-red-600 text-sm mt-1 block">{errors.province}</span>}
                 </div>
               </>
             )}

@@ -12,8 +12,10 @@ const ReportVisualizationPage = () => {
   const reportType = params.reportType || 'Waste Collection Summary';
   const [reportData, setReportData] = useState(null);
   const [statusCounts, setStatusCounts] = useState(null);
+  const [typeCounts, setTypeCounts] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [loadingTypes, setLoadingTypes] = useState(true);
   const [error, setError] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -26,16 +28,23 @@ const ReportVisualizationPage = () => {
   const handleExportCSV = () => {
     setExporting(true);
     setExportFormat('CSV');
-    // Prepare CSV data from statusCounts
+    
+    // Prepare CSV data from both status and type counts
     const csvRows = [
-      ['Status', 'Count'],
-      ...statusEntries.map(([status, count]) => [status, count])
+      ['Category', 'Type', 'Count'],
+      ...statusEntries.map(([status, count]) => ['Status', status, count]),
+      ...typeEntries.map(([type, count]) => [
+        reportType === 'Sensor Data' ? 'Container Type' : 'Waste Type', 
+        type, 
+        count
+      ])
     ];
+    
     const csv = Papa.unparse(csvRows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'waste-status-report.csv');
+    link.setAttribute('download', 'waste-report.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -93,10 +102,36 @@ const ReportVisualizationPage = () => {
       });
   }, [reportType]);
 
+  useEffect(() => {
+    // Fetch type counts from backend - conditional based on report type
+    setLoadingTypes(true);
+    
+    // Choose API endpoint based on report type
+    const typeCountsUrl = reportType === 'Sensor Data' 
+      ? 'http://localhost:5000/api/reports/container-type-counts'
+      : 'http://localhost:5000/api/reports/waste-type-counts';
+    
+    fetch(typeCountsUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('[ReportVisualization] type counts response:', data);
+        setTypeCounts(data.data);
+        setLoadingTypes(false);
+      })
+      .catch((err) => {
+        console.error('[ReportVisualization] type counts fetch error:', err);
+        setLoadingTypes(false);
+      });
+  }, [reportType]);
+
   // Helpers for charts (use statusCounts from backend API)
   const statusEntries = statusCounts?.counts ? Object.entries(statusCounts.counts) : [];
   const totalStatus = statusCounts?.total || statusEntries.reduce((s, [, c]) => s + c, 0);
   const maxStatus = statusEntries.reduce((m, [, c]) => Math.max(m, c), 0) || 1;
+
+  // Helpers for type distribution charts (use typeCounts from backend API)
+  const typeEntries = typeCounts?.counts ? Object.entries(typeCounts.counts) : [];
+  const totalTypes = typeCounts?.total || typeEntries.reduce((s, [, c]) => s + c, 0);
 
   // pie slice path generator
   const polarToCartesian = (cx, cy, r, angleDeg) => {
@@ -116,7 +151,7 @@ const ReportVisualizationPage = () => {
 
   const colors = ['#22c55e', '#a3e635', '#fbbf24', '#38bdf8', '#f87171', '#a78bfa'];
 
-  if (loadingData || loadingStatus) {
+  if (loadingData || loadingStatus || loadingTypes) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -379,29 +414,42 @@ const ReportVisualizationPage = () => {
               ))}
             </div>
           </div>
-          {/* Pie Chart */}
+          {/* Type Distribution Pie Chart */}
           <div className="bg-green-100 rounded-xl p-6 shadow flex flex-col items-center">
-            <h2 className="text-xl font-bold text-green-700 mb-4">Status Distribution</h2>
-            <svg width="200" height="200" viewBox="0 0 200 200">
-              {(() => {
-                let start = 0;
-                return statusEntries.map(([status, count], i) => {
-                  const slice = (count / totalStatus) * 360;
-                  const path = describeArc(100, 100, 80, start, start + slice);
-                  start += slice;
-                  return <path key={status} d={path} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="1" />;
-                });
-              })()}
-            </svg>
-            <div className="mt-4 grid grid-cols-2 gap-2 w-full">
-              {statusEntries.map(([status, count], i) => (
-                <div key={status} className="flex items-center gap-2 justify-between">
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: colors[i % colors.length] }}></span>
-                  <span className="text-green-700 text-sm font-semibold mr-5">{status}</span>
-                  <span className="text-gray-600 text-xs mr-15">{count}</span>
+            <h2 className="text-xl font-bold text-green-700 mb-4">
+              {reportType === 'Sensor Data' ? 'Container Type Distribution' : 'Waste Type Distribution'}
+            </h2>
+            {typeEntries.length > 0 ? (
+              <>
+                <svg width="200" height="200" viewBox="0 0 200 200">
+                  {(() => {
+                    let start = 0;
+                    return typeEntries.map(([type, count], i) => {
+                      const slice = (count / totalTypes) * 360;
+                      const path = describeArc(100, 100, 80, start, start + slice);
+                      start += slice;
+                      return <path key={type} d={path} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="1" />;
+                    });
+                  })()}
+                </svg>
+                <div className="mt-4 grid grid-cols-2 gap-2 w-full">
+                  {typeEntries.map(([type, count], i) => (
+                    <div key={type} className="flex items-center gap-2 justify-between">
+                      <span className="inline-block w-3 h-3 rounded-full" style={{ background: colors[i % colors.length] }}></span>
+                      <span className="text-green-700 text-sm font-semibold mr-5">{type}</span>
+                      <span className="text-gray-600 text-xs mr-15">{count}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <div>No {reportType === 'Sensor Data' ? 'container type' : 'waste type'} data available</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -460,13 +508,6 @@ const ReportVisualizationPage = () => {
                   {reportData.byType && Object.entries(reportData.byType).map(([type, count]) => (
                     <tr key={type} className="border-b border-green-200">
                       <td className="py-2 px-4 font-semibold text-green-700">Type: {type}</td>
-                      <td className="py-2 px-4 text-green-900">{count}</td>
-                    </tr>
-                  ))}
-                  {/* By City */}
-                  {reportData.byCity && Object.entries(reportData.byCity).map(([city, count]) => (
-                    <tr key={city} className="border-b border-green-200">
-                      <td className="py-2 px-4 font-semibold text-green-700">City: {city}</td>
                       <td className="py-2 px-4 text-green-900">{count}</td>
                     </tr>
                   ))}
@@ -564,22 +605,6 @@ const ReportVisualizationPage = () => {
               </div>
             </div>
           )}
-        </div>
-        <div>
-          <strong>Total Collections:</strong> {reportData.totalCollections}
-        </div>
-        <div>
-          <strong>Total Waste:</strong> {reportData.totalWaste} kg
-        </div>
-        <div>
-          <strong>Status Breakdown:</strong>
-          <ul>
-            {Object.entries(reportData.byStatus).map(([status, count]) => (
-              <li key={status}>
-                {status}: {count}
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </div>
