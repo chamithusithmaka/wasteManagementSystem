@@ -200,6 +200,11 @@ class WasteCollectionService {
 
   // Map backend pickup to frontend format for consistency
   static mapPickupToFrontend(pickup) {
+    if (!pickup) return null;
+    
+    // Extract user data if it's populated
+    const userData = pickup.userId && typeof pickup.userId === 'object' ? pickup.userId : null;
+    
     return {
       id: pickup._id,
       type: pickup.wasteType,
@@ -210,7 +215,16 @@ class WasteCollectionService {
       notes: pickup.notes,
       status: pickup.status,
       confirmationId: pickup.confirmationId,
-      containerFillLevel: pickup.containerFillLevel
+      containerFillLevel: pickup.containerFillLevel,
+      wasteAmount: pickup.wasteAmount,
+      completedAt: pickup.completedAt,
+      assignedStaff: pickup.assignedStaff,
+      // Add user details from populated field if available
+      userName: userData?.name || 'Not available',
+      userEmail: userData?.email || null,
+      userPhone: userData?.phone || null,
+      // Keep the original userId regardless of whether it's populated or not
+      userId: userData?._id || pickup.userId || null
     };
   }
 

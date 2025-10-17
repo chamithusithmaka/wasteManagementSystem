@@ -23,7 +23,8 @@ class WasteCollectionService {
   // Get pickup by ID
   static async getPickupById(pickupId) {
     try {
-      return await WasteCollectionRepository.findById(pickupId);
+      // Use populate to include user details from the User model
+      return await WasteCollectionRepository.findByIdWithUserDetails(pickupId);
     } catch (error) {
       throw error;
     }
