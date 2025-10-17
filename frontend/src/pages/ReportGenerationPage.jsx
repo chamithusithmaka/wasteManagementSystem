@@ -27,9 +27,34 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
   };
 
   const validate = () => {
-    // No required validation for now
-    setErrors({});
-    return true;
+    const newErrors = {};
+    
+    // Report type is required
+    if (!reportType || reportType.trim() === '') {
+      newErrors.reportType = 'Report type is required';
+    }
+    
+    // Start date is required
+    if (!params.startDate || params.startDate.trim() === '') {
+      newErrors.startDate = 'Start date is required';
+    }
+    
+    // End date is required
+    if (!params.endDate || params.endDate.trim() === '') {
+      newErrors.endDate = 'End date is required';
+    }
+    
+    // Additional validation: End date should be after start date
+    if (params.startDate && params.endDate) {
+      const startDate = new Date(params.startDate);
+      const endDate = new Date(params.endDate);
+      if (endDate < startDate) {
+        newErrors.endDate = 'End date must be after start date';
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const [showResult, setShowResult] = useState(false);
@@ -75,7 +100,7 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
         <form onSubmit={handleSubmit}>
           <div className="flex flex-wrap gap-8 items-end">
             <div className="flex flex-col min-w-[220px] relative">
-              <label className="text-green-700 font-semibold mb-2 text-lg">Report Type</label>
+              <label className="text-green-700 font-semibold mb-2 text-lg">Report Type <span className="text-red-500">*</span></label>
               <div className="relative">
                 <button
                   type="button"
@@ -111,7 +136,7 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
             </div>
             <div className="flex flex-col min-w-[220px]">
               <div className="flex items-center mb-2">
-                <label className="text-green-700 font-semibold text-lg mr-2">Start Date</label>
+                <label className="text-green-700 font-semibold text-lg mr-2">Start Date <span className="text-red-500">*</span></label>
                 <span className="ml-1 cursor-pointer" data-tooltip-id="tip-start-date">🛈</span>
                 <Tooltip id="tip-start-date" place="right" content="Select the start date for the report." />
               </div>
@@ -131,7 +156,7 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
             </div>
             <div className="flex flex-col min-w-[220px]">
               <div className="flex items-center mb-2">
-                <label className="text-green-700 font-semibold text-lg mr-2">End Date</label>
+                <label className="text-green-700 font-semibold text-lg mr-2">End Date <span className="text-red-500">*</span></label>
                 <span className="ml-1 cursor-pointer" data-tooltip-id="tip-end-date">🛈</span>
                 <Tooltip id="tip-end-date" place="right" content="Select the end date for the report." />
               </div>
@@ -386,7 +411,7 @@ const ReportGenerationPage = ({ onGenerate, initialParams }) => {
                         className={`px-4 py-3 cursor-pointer text-gray-500 hover:bg-green-50 hover:text-green-700 transition-all duration-200 rounded-t-lg ${!params.province ? 'bg-green-50 text-green-700' : ''}`}
                         onClick={() => { handleParamChange('province', ''); setProvinceDropdownOpen(false); }}
                       >Select province</li>
-                      {['Western', 'Central', 'Southern', 'Northern', 'Eastern', 'North Western', 'North Central', 'Uva', 'Sabaragamuwa'].map((province) => (
+                      {['Western Province', 'Central Province', 'Southern Province', 'Northern Province', 'Eastern Province', 'North Western Province', 'North Central Province', 'Uva Province', 'Sabaragamuwa Province'].map((province) => (
                         <li
                           key={province}
                           className={`px-4 py-3 cursor-pointer hover:bg-green-100 hover:text-green-700 transition-all duration-200 ${params.province === province ? 'bg-green-200 text-green-700 font-bold' : 'text-gray-700'}`}

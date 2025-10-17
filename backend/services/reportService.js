@@ -178,12 +178,13 @@ const buildWasteCollectionQuery = ({ wasteType, status, startDate, endDate, prov
 /**
  * Build query for container data
  */
-const buildContainerQuery = ({ wasteType, containerType, status, startDate, endDate, city }) => {
+const buildContainerQuery = ({ wasteType, containerType, status, startDate, endDate, city, province }) => {
   const query = {};
   const type = containerType || wasteType;
   if (type) query.containerType = type;
   if (status) query.status = status;
   if (city) query['containerLocation.city'] = city;
+  if (province) query['containerLocation.province'] = province;
   if (startDate || endDate) {
     query.lastUpdatedDate = {};
     if (startDate) query.lastUpdatedDate.$gte = new Date(startDate);
@@ -226,6 +227,12 @@ const processContainerData = (containers) => {
     return acc;
   }, {});
 
+  const byProvince = containers.reduce((acc, c) => {
+    const province = c.containerLocation?.province || 'Unknown';
+    acc[province] = (acc[province] || 0) + 1;
+    return acc;
+  }, {});
+
   return {
     totalContainers: containers.length,
     totalContainerCapacity: containers.reduce((sum, c) => sum + (c.containerCapacity || 0), 0),
@@ -233,6 +240,7 @@ const processContainerData = (containers) => {
     byStatus,
     byType,
     byCity,
+    byProvince,
     containers: containers.map(c => ({
       containerId: c.containerId,
       type: c.containerType,
