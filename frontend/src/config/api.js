@@ -23,7 +23,6 @@ export const API_ENDPOINTS = {
     GET_BY_TYPE: (type) => `${API_BASE_URL}/containers/type/${type}`,
     GET_NEEDING_COLLECTION: `${API_BASE_URL}/containers/needing-collection`,
     SCHEDULE_COLLECTION: (id) => `${API_BASE_URL}/containers/${id}/schedule-collection`,
-    SCHEDULE_COLLECTION: (id) => `${API_BASE_URL}/containers/${id}/schedule-collection`, // Add this line
   },
   
   // Waste collection endpoints
