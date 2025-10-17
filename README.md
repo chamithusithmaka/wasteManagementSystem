@@ -28,8 +28,7 @@
 - [API Documentation](#-api-documentation)
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
-- [Contributing](#-contributing)
-- [License](#-license)
+
 
 ---
 
@@ -537,9 +536,9 @@ frontend/
 ## 👥 Authors
 
 - **Sithmaka Nanayakkara** - *Payment Management* - [GitHub](https://github.com/chamithusithmaka)
-- **Imal Ayodya** - *Schedule Waste Collection* - [YourGitHub](https://github.com/ImalAyodya)
-- **Malmi Bandara** - *Container Waste Management* - [YourGitHub](https://github.com/YeshaniB)
-- **Pasan Amarasinghe** - *Generate Reports for Authorities* - [YourGitHub](https://github.com/Pasan115)
+- **Imal Ayodya** - *Schedule Waste Collection* - [GitHub](https://github.com/ImalAyodya)
+- **Malmi Bandara** - *Container Waste Management* - [GitHub](https://github.com/YeshaniB)
+- **Pasan Amarasinghe** - *Generate Reports for Authorities* - [GitHub](https://github.com/Pasan115)
 
 ---
 
