@@ -2,9 +2,9 @@
 import containerService from "../services/containerService.js";
 
 // Timing configuration (in milliseconds)
-const LEVEL_UPDATE_TIME = 30 * 60 * 1000;  // 5 minutes 5 * 60 * 1000, 20 * 1000
+const LEVEL_UPDATE_TIME = 1 * 60 * 1000;  // 5 minutes 5 * 60 * 1000, 20 * 1000
 const ERROR_FIX_TIME = 6 * 60 * 1000;     // 6 minutes  
-const ERROR_TRIGGER_TIME = 20 * 60 * 1000; // 4 minutes
+const ERROR_TRIGGER_TIME = 4 * 60 * 1000; // 4 minutes
 const STATUS_RECOVERY_TIME = 5 * 60 * 1000; // 5 minutes for status recovery
 
 let levelUpdateInterval = null;

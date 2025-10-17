@@ -17,8 +17,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from 'recharts'
 import StatCard from '../../components/ContainerManagement/StatCard'
 import containerService from '../../services/containerService'
@@ -91,22 +89,7 @@ const ContainerDashboard = () => {
     }))
   }
 
-  // Generate collection trends (mock data for now - would need historical data)
-  const generateCollectionTrends = () => {
-    const last7Days = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      
-      last7Days.push({
-        date: dateStr,
-        scheduled: Math.floor(Math.random() * 10) + 5,
-        completed: Math.floor(Math.random() * 8) + 3
-      })
-    }
-    return last7Days
-  }
+
 
   const highPriorityContainers = containers
     .filter((c) => c.containerLevel >= 80 || c.isErrorDetected)
@@ -198,13 +181,13 @@ const ContainerDashboard = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fill Level Distribution */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">
             Container Fill Level Distribution
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={400}>
             <BarChart data={generateFillLevelDistribution()}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="range" />
@@ -216,67 +199,72 @@ const ContainerDashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Collection Trends */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Collection Trends</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={generateCollectionTrends()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="scheduled"
-                name="Scheduled"
-                stroke="#3b82f6"
-              />
-              <Line
-                type="monotone"
-                dataKey="completed"
-                name="Completed"
-                stroke="#16a34a"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
         {/* Sensor Status Overview */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Sensor Status Overview</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Active Sensors</span>
-              <span className="text-lg font-semibold text-green-600">
-                {containers.filter(c => !c.isErrorDetected).length}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Error Detected</span>
-              <span className="text-lg font-semibold text-red-600">
-                {containers.filter(c => c.isErrorDetected).length}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Total Containers</span>
-              <span className="text-lg font-semibold text-gray-700">
-                {containers.length}
-              </span>
-            </div>
-            <div className="mt-4 pt-4 border-t">
-              <div className="text-sm text-gray-600 mb-2">Sensor Health</div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
-                  style={{ 
-                    width: `${containers.length > 0 ? ((containers.filter(c => !c.isErrorDetected).length / containers.length) * 100) : 0}%` 
-                  }}
-                ></div>
+          <h2 className="text-lg font-semibold mb-6">Sensor Status Overview</h2>
+          
+          {/* Status Cards */}
+          <div className="grid grid-cols-1 gap-4 mb-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-green-800">Active Sensors</h3>
+                  <p className="text-2xl font-bold text-green-600">
+                    {containers.filter(c => !c.isErrorDetected).length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">Error Detected</h3>
+                  <p className="text-2xl font-bold text-red-600">
+                    {containers.filter(c => c.isErrorDetected).length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-800">Total Containers</h3>
+                  <p className="text-2xl font-bold text-gray-600">
+                    {containers.length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                  <BarChart2 className="w-6 h-6 text-gray-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Health Meter */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm font-medium text-gray-700 mb-3">Overall Sensor Health</div>
+            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+              <div 
+                className="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-300" 
+                style={{ 
+                  width: `${containers.length > 0 ? ((containers.filter(c => !c.isErrorDetected).length / containers.length) * 100) : 0}%` 
+                }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>0%</span>
+              <span className="font-semibold text-green-600">
                 {containers.length > 0 ? Math.round(((containers.filter(c => !c.isErrorDetected).length / containers.length) * 100)) : 0}% Operational
-              </div>
+              </span>
+              <span>100%</span>
             </div>
           </div>
         </div>
