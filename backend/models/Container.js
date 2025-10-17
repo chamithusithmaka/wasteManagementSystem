@@ -28,6 +28,22 @@ const ContainerSchema = new mongoose.Schema({
       type: String,
       trim: true,
     },
+    province: {
+      type: String,
+      required: false,
+      enum: [
+        'Western Province',
+        'Central Province', 
+        'Southern Province',
+        'Northern Province',
+        'Eastern Province',
+        'North Western Province',
+        'North Central Province',
+        'Uva Province',
+        'Sabaragamuwa Province'
+      ],
+      trim: true,
+    },
     coordinates: {
       latitude: {
         type: Number,

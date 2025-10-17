@@ -84,6 +84,15 @@ class ContainerService {
   }
 
   /**
+   * Get containers by province
+   * @param {String} province - Province name
+   * @returns {Promise<Array>} Array of containers
+   */
+  async getContainersByProvince(province) {
+    return await containerRepository.findByProvince(province);
+  }
+
+  /**
    * Get containers that need collection
    * @param {Number} threshold - Fill level threshold (default 80)
    * @returns {Promise<Array>} Array of containers
@@ -296,6 +305,22 @@ class ContainerService {
       status: 'Out of Service',
       isErrorDetected: true
     });
+  }
+
+  /**
+   * Check if container has location assigned
+   * @param {String} containerId - The unique container ID
+   * @returns {Promise<Boolean>} True if location is assigned
+   */
+  async isLocationAssigned(containerId) {
+    const container = await containerRepository.findByContainerId(containerId);
+    if (!container) {
+      throw new Error(`Container ${containerId} not found`);
+    }
+
+    // Business logic: Location is considered assigned if both address and city are present
+    const location = container.containerLocation;
+    return !!(location && location.address && location.city);
   }
 }
 

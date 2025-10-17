@@ -70,6 +70,15 @@ class ContainerRepository {
   }
 
   /**
+   * Find containers by location (province)
+   * @param {String} province - Province to filter by
+   * @returns {Promise<Array>} Array of container documents
+   */
+  async findByProvince(province) {
+    return await Container.find({ "containerLocation.province": province });
+  }
+
+  /**
    * Find containers that need collection (level >= threshold)
    * @param {Number} threshold - Fill level threshold (default 80)
    * @returns {Promise<Array>} Array of container documents
