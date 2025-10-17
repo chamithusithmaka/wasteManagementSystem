@@ -7,6 +7,7 @@ import PaymentsPage from './pages/PaymentsPage';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import SchedulePickup from './pages/Waste-collection/SchedulePickup'; // added route component
 import WasteCollection from './pages/Waste-collection/WasteCollection';
 import WasteLevel from './pages/WasteLevel';
@@ -62,7 +63,19 @@ function App() {
           {/* Admin routes - use nested routes under /admin */}
           <Route path="/admin/*" element={<AdminLayout />} />
           <Route path="/admin-dashboard" element={
-            <AdminLayout />
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
+          } />
+          <Route path="/report-generation" element={
+            <AdminLayout>
+              <ReportGenerationPage />
+            </AdminLayout>
+          } />
+          <Route path="/report-visualization" element={
+            <AdminLayout>
+              <ReportVisualizationPage />
+            </AdminLayout>
           } />
           <Route path="/schedule" element={
             <Layout>

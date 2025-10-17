@@ -9,7 +9,14 @@ class UserService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    return res.json();
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.message || 'Login failed');
+    }
+    
+    return data;
   }
 
   static async signup({ name, username, email, password }) {

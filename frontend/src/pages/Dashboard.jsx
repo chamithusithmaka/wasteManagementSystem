@@ -120,6 +120,9 @@ const PaymentPreviewCard = ({ dueAmount, lastPayment, nextDue }) => {
 };
 
 const Dashboard = () => {
+  // Debug log to check if Dashboard component mounts
+  console.log('Dashboard component mounted/rendered');
+  
   // State for API data
   const [pickups, setPickups] = useState([]);
   const [completedPickups, setCompletedPickups] = useState([]);
