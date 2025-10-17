@@ -1,9 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Papa from 'papaparse';
+import {
+  fetchReportData,
+  fetchStatusCounts,
+  fetchTypeCounts,
+} from '../services/reportService';
 
 const ReportVisualizationPage = () => {
   const location = useLocation();
@@ -24,7 +28,7 @@ const ReportVisualizationPage = () => {
   const [feedback, setFeedback] = useState('Report generated successfully!');
   const reportRef = React.useRef();
 
-    // CSV Export
+  // CSV Export
   const handleExportCSV = () => {
     setExporting(true);
     setExportFormat('CSV');
@@ -55,26 +59,14 @@ const ReportVisualizationPage = () => {
   };
 
   useEffect(() => {
-    // Fetch report data from backend
-    console.log('[ReportVisualization] sending request to /api/reports/generate with params:', params);
     setLoadingData(true);
     setError(null);
-    fetch('http://localhost:5000/api/reports/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    })
-      .then((res) => {
-        console.log('[ReportVisualization] response status:', res.status);
-        return res.json();
-      })
+    fetchReportData(params)
       .then((data) => {
-        console.log('[ReportVisualization] response body:', data);
         setReportData(data.data);
         setLoadingData(false);
       })
       .catch((err) => {
-        console.error('[ReportVisualization] fetch error:', err);
         setFeedback('Failed to load report data');
         setError(err?.message || 'Failed to fetch');
         setLoadingData(false);
@@ -82,44 +74,25 @@ const ReportVisualizationPage = () => {
   }, [params]);
 
   useEffect(() => {
-    // Fetch status counts from backend - conditional based on report type
     setLoadingStatus(true);
-    
-    // Choose API endpoint based on report type
-    const statusCountsUrl = reportType === 'Sensor Data' 
-      ? 'http://localhost:5000/api/reports/sensor-status-counts'
-      : 'http://localhost:5000/api/reports/status-counts';
-    
-    fetch(statusCountsUrl)
-      .then((res) => res.json())
+    fetchStatusCounts(reportType)
       .then((data) => {
         setStatusCounts(data.data);
         setLoadingStatus(false);
       })
       .catch((err) => {
-        console.error('[ReportVisualization] status counts fetch error:', err);
         setLoadingStatus(false);
       });
   }, [reportType]);
 
   useEffect(() => {
-    // Fetch type counts from backend - conditional based on report type
     setLoadingTypes(true);
-    
-    // Choose API endpoint based on report type
-    const typeCountsUrl = reportType === 'Sensor Data' 
-      ? 'http://localhost:5000/api/reports/container-type-counts'
-      : 'http://localhost:5000/api/reports/waste-type-counts';
-    
-    fetch(typeCountsUrl)
-      .then((res) => res.json())
+    fetchTypeCounts(reportType)
       .then((data) => {
-        console.log('[ReportVisualization] type counts response:', data);
         setTypeCounts(data.data);
         setLoadingTypes(false);
       })
       .catch((err) => {
-        console.error('[ReportVisualization] type counts fetch error:', err);
         setLoadingTypes(false);
       });
   }, [reportType]);
