@@ -204,22 +204,39 @@ async function createTransaction(userId, amount, paymentMethod, billIds) {
 
 // Add the batchPayBills function (moved from routes file)
 export const batchPayBills = async (req, res) => {
+  console.log('🔵 batchPayBills called'); // <-- Add this
+  console.log('📦 Request body:', req.body); // <-- Add this
+  console.log('👤 User ID:', req.user?._id); // <-- Add this
+  
   try {
     const { billIds, paymentMethod, useWallet, applyRewards } = req.body;
     const userId = req.user._id;
 
+    console.log('📋 Bill IDs received:', billIds); // <-- Add this
+
     if (!billIds || !Array.isArray(billIds) || billIds.length === 0) {
+      console.log('❌ No bill IDs provided'); // <-- Add this
       return res.status(400).json({ message: 'No bill IDs provided' });
     }
 
     // Fetch and validate bills
+    console.log('🔍 Fetching bills...'); // <-- Add this
     const bills = await Promise.all(billIds.map(id => Bill.findById(id)));
+    console.log('✅ Bills found:', bills.length); // <-- Add this
+    
     for (const bill of bills) {
-      if (!bill) return res.status(404).json({ message: 'One or more bills not found' });
-      if (bill.userId.toString() !== userId.toString())
+      if (!bill) {
+        console.log('❌ Bill not found'); // <-- Add this
+        return res.status(404).json({ message: 'One or more bills not found' });
+      }
+      if (bill.userId.toString() !== userId.toString()) {
+        console.log('❌ Not authorized for bill:', bill._id); // <-- Add this
         return res.status(403).json({ message: 'Not authorized to pay one or more bills' });
-      if (bill.status === 'paid')
+      }
+      if (bill.status === 'paid') {
+        console.log('❌ Bill already paid:', bill._id); // <-- Add this
         return res.status(400).json({ message: 'One or more bills are already paid' });
+      }
     }
 
     const totalAmount = bills.reduce((sum, bill) => sum + bill.amount, 0);
