@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Filter, Edit, Trash2, AlertTriangle, Plus, MapPin } from 'lucide-react'
+import { Search, Filter, Edit, Trash2, AlertTriangle, Plus, MapPin, Power } from 'lucide-react'
 import containerService from '../../services/containerService'
 
 const ContainerManagement = () => {
@@ -25,6 +25,11 @@ const ContainerManagement = () => {
   const [updateLoading, setUpdateLoading] = useState(false)
   const [updateError, setUpdateError] = useState(null)
   const [updateSuccess, setUpdateSuccess] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
+  const [containerToDelete, setContainerToDelete] = useState(null)
+  const [containerToDeactivate, setContainerToDeactivate] = useState(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   const itemsPerPage = 10
 
@@ -167,10 +172,79 @@ const ContainerManagement = () => {
     }
   }
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault()
-    console.log('Updated container:', editingContainer)
-    closeModal()
+    if (!editingContainer) return
+
+    setUpdateLoading(true)
+    setUpdateError(null)
+
+    try {
+      const updateData = {
+        containerType: editingContainer.containerType,
+        containerCapacity: editingContainer.containerCapacity,
+        containerLocation: {
+          address: editingContainer.containerLocation?.address || '',
+          city: editingContainer.containerLocation?.city || '',
+          province: editingContainer.containerLocation?.province || ''
+        }
+      }
+
+      await containerService.updateContainer(editingContainer.containerId, updateData)
+      await fetchContainers() // Refresh the list
+      closeModal()
+    } catch (err) {
+      console.error('Error updating container:', err)
+      setUpdateError(err.response?.data?.error || 'Failed to update container')
+    } finally {
+      setUpdateLoading(false)
+    }
+  }
+
+  // Delete handler
+  const handleDeleteClick = (container) => {
+    setContainerToDelete(container)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!containerToDelete) return
+
+    setActionLoading(true)
+    try {
+      await containerService.deleteContainer(containerToDelete.containerId)
+      await fetchContainers() // Refresh the list
+      setShowDeleteConfirm(false)
+      setContainerToDelete(null)
+    } catch (err) {
+      console.error('Error deleting container:', err)
+      setError(err.response?.data?.error || 'Failed to delete container')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Deactivate handler
+  const handleDeactivateClick = (container) => {
+    setContainerToDeactivate(container)
+    setShowDeactivateConfirm(true)
+  }
+
+  const handleDeactivateConfirm = async () => {
+    if (!containerToDeactivate) return
+
+    setActionLoading(true)
+    try {
+      await containerService.deactivateContainer(containerToDeactivate.containerId)
+      await fetchContainers() // Refresh the list
+      setShowDeactivateConfirm(false)
+      setContainerToDeactivate(null)
+    } catch (err) {
+      console.error('Error deactivating container:', err)
+      setError(err.response?.data?.error || 'Failed to deactivate container')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   return (
@@ -282,6 +356,7 @@ const ContainerManagement = () => {
                   'ID',
                   'Location',
                   'City',
+                  'Province',
                   'Type',
                   'Status',
                   'Fill Level',
@@ -308,6 +383,9 @@ const ContainerManagement = () => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {container.containerLocation?.city || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {container.containerLocation?.province || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <span className="capitalize">{container.containerType}</span>
@@ -354,13 +432,22 @@ const ContainerManagement = () => {
                     </button>
                     <button
                       onClick={() => openEditModal(container)}
-                      className="text-green-600 hover:text-green-900"
+                      className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-2 rounded-md transition-colors"
                       title="Edit Container"
                     >
                       <Edit size={18} />
                     </button>
+                    <button
+                      onClick={() => handleDeactivateClick(container)}
+                      className="text-orange-600 hover:text-orange-900 bg-orange-50 hover:bg-orange-100 p-2 rounded-md transition-colors"
+                      title="Deactivate Container"
+                      disabled={container.status === 'Out of Service'}
+                    >
+                      <Power size={18} />
+                    </button>
                     <button 
-                      className="text-red-600 hover:text-red-900"
+                      onClick={() => handleDeleteClick(container)}
+                      className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-md transition-colors"
                       title="Delete Container"
                     >
                       <Trash2 size={18} />
@@ -423,7 +510,7 @@ const ContainerManagement = () => {
 
       {/* Location Assignment Modal */}
       {isLocationModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-green-50 bg-opacity-30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -514,7 +601,7 @@ const ContainerManagement = () => {
                   <button
                     type="submit"
                     disabled={updateLoading}
-                    className="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 bg-green-50 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {updateLoading ? 'Updating...' : 'Update Location'}
                   </button>
@@ -528,6 +615,241 @@ const ContainerManagement = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Container Modal */}
+      {isModalOpen && editingContainer && (
+        <div className="fixed inset-0 bg-green-50 bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Edit Container</h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Container Info */}
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Container ID</p>
+              <p className="font-semibold">{editingContainer.containerId}</p>
+            </div>
+
+            {/* Error Message */}
+            {updateError && (
+              <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                {updateError}
+              </div>
+            )}
+
+            {/* Edit Form */}
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Container Type *
+                </label>
+                <select
+                  name="containerType"
+                  value={editingContainer.containerType || ''}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  <option value="">Select Type</option>
+                  <option value="organic">Organic</option>
+                  <option value="recyclable">Recyclable</option>
+                  <option value="hazardous">Hazardous</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Container Capacity (L) *
+                </label>
+                <input
+                  type="number"
+                  name="containerCapacity"
+                  value={editingContainer.containerCapacity || ''}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter capacity in liters"
+                  min="1"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={editingContainer.containerLocation?.address || ''}
+                  onChange={(e) => {
+                    setEditingContainer({
+                      ...editingContainer,
+                      containerLocation: {
+                        ...editingContainer.containerLocation,
+                        address: e.target.value
+                      }
+                    })
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={editingContainer.containerLocation?.city || ''}
+                  onChange={(e) => {
+                    setEditingContainer({
+                      ...editingContainer,
+                      containerLocation: {
+                        ...editingContainer.containerLocation,
+                        city: e.target.value
+                      }
+                    })
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter city"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Province
+                </label>
+                <select
+                  name="province"
+                  value={editingContainer.containerLocation?.province || ''}
+                  onChange={(e) => {
+                    setEditingContainer({
+                      ...editingContainer,
+                      containerLocation: {
+                        ...editingContainer.containerLocation,
+                        province: e.target.value
+                      }
+                    })
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Select Province</option>
+                  {provinces.map((province) => (
+                    <option key={province} value={province}>
+                      {province}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={updateLoading}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {updateLoading ? 'Updating...' : 'Update Container'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={updateLoading}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-green-900 bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Delete Container
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to delete container "{containerToDelete?.containerId}"? 
+                This action cannot be undone and will permanently remove all container data.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false)
+                    setContainerToDelete(null)
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={actionLoading}
+                  className="flex-1 bg-red-600 text-white py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Confirmation Modal */}
+      {showDeactivateConfirm && (
+        <div className="fixed inset-0 bg-green-900 bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
+                <Power className="h-6 w-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Deactivate Container
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to deactivate container "{containerToDeactivate?.containerId}"? 
+                This will set the container status to "Out of Service" and mark it as having an error.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeactivateConfirm(false)
+                    setContainerToDeactivate(null)
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeactivateConfirm}
+                  disabled={actionLoading}
+                  className="flex-1 bg-orange-600 text-white py-2 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? 'Deactivating...' : 'Deactivate'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

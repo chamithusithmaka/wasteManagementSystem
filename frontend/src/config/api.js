@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/containers`,
     UPDATE: (id) => `${API_BASE_URL}/containers/${id}`,
     DELETE: (id) => `${API_BASE_URL}/containers/${id}`,
+    DEACTIVATE: (id) => `${API_BASE_URL}/containers/${id}/deactivate`,
     GET_STATISTICS: `${API_BASE_URL}/containers/statistics`,
     GET_BY_STATUS: (status) => `${API_BASE_URL}/containers/status/${status}`,
     GET_BY_TYPE: (type) => `${API_BASE_URL}/containers/type/${type}`,

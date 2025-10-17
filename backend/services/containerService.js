@@ -290,32 +290,62 @@ class ContainerService {
 
   /**
    * Deactivate container (set to Out of Service)
-   * @param {String} containerId - The unique container ID
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
    * @returns {Promise<Object|null>} Updated container
    */
-  async deactivateContainer(containerId) {
-    // Business logic: Check if container exists before deactivating
-    const container = await containerRepository.findByContainerId(containerId);
+  async deactivateContainer(id) {
+    let container = null;
+    let isMongoId = false;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+      isMongoId = true;
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
     if (!container) {
-      throw new Error(`Container ${containerId} not found`);
+      throw new Error(`Container ${id} not found`);
     }
 
     // Business logic: Set to Out of Service and mark as error detected
-    return await containerRepository.updateByContainerId(containerId, {
-      status: 'Out of Service',
-      isErrorDetected: true
-    });
+    if (isMongoId) {
+      // Use MongoDB _id for update
+      return await containerRepository.updateById(id, {
+        status: 'Out of Service',
+        isErrorDetected: true
+      });
+    } else {
+      // Use business containerId for update
+      return await containerRepository.updateByContainerId(id, {
+        status: 'Out of Service',
+        isErrorDetected: true
+      });
+    }
   }
 
   /**
    * Check if container has location assigned
-   * @param {String} containerId - The unique container ID
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
    * @returns {Promise<Boolean>} True if location is assigned
    */
-  async isLocationAssigned(containerId) {
-    const container = await containerRepository.findByContainerId(containerId);
+  async isLocationAssigned(id) {
+    let container = null;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
     if (!container) {
-      throw new Error(`Container ${containerId} not found`);
+      throw new Error(`Container ${id} not found`);
     }
 
     // Business logic: Location is considered assigned if both address and city are present

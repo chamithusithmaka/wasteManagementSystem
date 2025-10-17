@@ -98,6 +98,21 @@ const containerService = {
   },
 
   /**
+   * Deactivate container (set to Out of Service)
+   * @param {String} containerId - Container ID
+   * @returns {Promise} Success message
+   */
+  deactivateContainer: async (containerId) => {
+    try {
+      const response = await api.put(API_ENDPOINTS.CONTAINERS.DEACTIVATE(containerId));
+      return response.data;
+    } catch (error) {
+      console.error(`Error deactivating container ${containerId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Get containers by status
    * @param {String} status - Container status
    * @returns {Promise} Array of containers
