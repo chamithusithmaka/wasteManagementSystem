@@ -40,6 +40,15 @@ class ContainerService {
   }
 
   /**
+   * Find a container by MongoDB ObjectId
+   * @param {String} id - MongoDB ObjectId
+   * @returns {Promise<Object|null>} Container document or null
+   */
+  async getContainerByMongoId(id) {
+    return await containerRepository.findById(id);
+  }
+
+  /**
    * Get all containers
    * @returns {Promise<Array>} Array of containers
    */
@@ -72,6 +81,15 @@ class ContainerService {
    */
   async getContainersByCity(city) {
     return await containerRepository.findByCity(city);
+  }
+
+  /**
+   * Get containers by province
+   * @param {String} province - Province name
+   * @returns {Promise<Array>} Array of containers
+   */
+  async getContainersByProvince(province) {
+    return await containerRepository.findByProvince(province);
   }
 
   /**
@@ -110,9 +128,16 @@ class ContainerService {
     if (updateData.containerLevel !== undefined) {
       if (updateData.containerLevel >= 95) {
         updateData.status = 'Full';
-      } else if (updateData.containerLevel < 80 && updateData.status === 'Full') {
+      } else if (updateData.containerLevel >= 80) {
+        updateData.status = 'Near Full';
+      } else if (updateData.containerLevel < 80 && (updateData.status === 'Full' || updateData.status === 'Near Full')) {
         updateData.status = 'Available';
       }
+    }
+
+    // Business logic: If isErrorDetected is true, set status to Needs Maintenance
+    if (updateData.isErrorDetected === true) {
+      updateData.status = 'Needs Maintenance';
     }
 
     // Business logic: If marking as Out of Service, set error flag
@@ -146,7 +171,7 @@ class ContainerService {
    */
   async updateContainerStatus(containerId, status) {
     // Business logic: Validate status
-    const validStatuses = ['Available', 'Full', 'Needs Maintenance', 'Out of Service'];
+    const validStatuses = ['Available', 'Near Full', 'Full', 'Needs Maintenance', 'Out of Service'];
     if (!validStatuses.includes(status)) {
       throw new Error(`Status must be one of: ${validStatuses.join(', ')}`);
     }
@@ -261,6 +286,71 @@ class ContainerService {
       status: 'Available',
       isErrorDetected: false
     });
+  }
+
+  /**
+   * Deactivate container (set to Out of Service)
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
+   * @returns {Promise<Object|null>} Updated container
+   */
+  async deactivateContainer(id) {
+    let container = null;
+    let isMongoId = false;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+      isMongoId = true;
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
+    if (!container) {
+      throw new Error(`Container ${id} not found`);
+    }
+
+    // Business logic: Set to Out of Service and mark as error detected
+    if (isMongoId) {
+      // Use MongoDB _id for update
+      return await containerRepository.updateById(id, {
+        status: 'Out of Service',
+        isErrorDetected: true
+      });
+    } else {
+      // Use business containerId for update
+      return await containerRepository.updateByContainerId(id, {
+        status: 'Out of Service',
+        isErrorDetected: true
+      });
+    }
+  }
+
+  /**
+   * Check if container has location assigned
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
+   * @returns {Promise<Boolean>} True if location is assigned
+   */
+  async isLocationAssigned(id) {
+    let container = null;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
+    if (!container) {
+      throw new Error(`Container ${id} not found`);
+    }
+
+    // Business logic: Location is considered assigned if both address and city are present
+    const location = container.containerLocation;
+    return !!(location && location.address && location.city);
   }
 }
 

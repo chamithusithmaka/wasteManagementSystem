@@ -9,7 +9,7 @@ import rewardRoutes from "./routes/rewardRoutes.js";
 import billRoutes from './routes/billRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import containerRoutes from "./routes/containerRoutes.js";
-import { simulateSensorData } from "./utils/sensorSimulator.js";
+import { simulateSensorData, startAutomatedSimulation } from "./utils/sensorSimulator.js";
 
 dotenv.config(); // Load .env variables
 
@@ -53,4 +53,11 @@ app.get("/api/test", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🌐 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🌐 Server running on port ${PORT}`);
+  
+  // Start automated sensor simulation after server starts
+  setTimeout(() => {
+    startAutomatedSimulation();
+  }, 3000); // Wait 3 seconds for DB connection to stabilize
+});
