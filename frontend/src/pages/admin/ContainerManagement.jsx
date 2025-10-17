@@ -12,6 +12,8 @@ const ContainerManagement = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [priorityContainers, setPriorityContainers] = useState([]);
+  const [showPrioritySection, setShowPrioritySection] = useState(true);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +39,7 @@ const ContainerManagement = () => {
           result = await ContainerService.getAllContainers(currentPage);
         }
         
-        setContainers(result.containers || []);
+        setContainers(result.containers || result || []);
         setTotalPages(result.totalPages || 1);
       } catch (err) {
         console.error('Error fetching containers:', err);
@@ -49,6 +51,39 @@ const ContainerManagement = () => {
 
     fetchContainers();
   }, [currentPage, statusFilter, refreshTrigger]);
+  
+  // Fetch priority containers (Full and Near Full)
+  useEffect(() => {
+    const fetchPriorityContainers = async () => {
+      try {
+        // Only fetch priority containers when on the main view (no status filter)
+        if (statusFilter === '') {
+          // Fetch Full containers
+          const fullContainers = await ContainerService.getContainersByStatus('Full');
+          
+          // Fetch Near Full containers
+          const nearFullContainers = await ContainerService.getContainersByStatus('Near Full');
+          
+          // Combine and sort by level (highest first)
+          const combined = [
+            ...(fullContainers.containers || fullContainers || []),
+            ...(nearFullContainers.containers || nearFullContainers || [])
+          ].sort((a, b) => b.containerLevel - a.containerLevel);
+          
+          setPriorityContainers(combined);
+        } else {
+          setPriorityContainers([]);
+        }
+      } catch (err) {
+        console.error('Error fetching priority containers:', err);
+        // Don't show error for this section, just hide it
+        setPriorityContainers([]);
+        setShowPrioritySection(false);
+      }
+    };
+    
+    fetchPriorityContainers();
+  }, [statusFilter, refreshTrigger]);
   
   // Handle page change
   const handlePageChange = (newPage) => {
@@ -101,6 +136,80 @@ const ContainerManagement = () => {
         </AlertBanner>
       )}
       
+      {/* Containers requiring attention section */}
+      {showPrioritySection && priorityContainers.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
+          <div className="flex justify-between items-center p-6 border-b">
+            <h2 className="text-xl font-semibold text-amber-700">
+              Containers Requiring Attention ({priorityContainers.length})
+            </h2>
+            <button 
+              onClick={() => setShowPrioritySection(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Dismiss
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-amber-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Container ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waste Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {priorityContainers.map((container) => (
+                  <tr key={`priority-${container._id}`} className="hover:bg-amber-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{container.containerId}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <div>{container.containerLocation?.address || 'N/A'}</div>
+                      <div className="text-xs text-gray-400">{container.containerLocation?.province || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{container.containerType}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-2 w-24 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${getColorByLevel(container.containerLevel)}`}
+                            style={{ width: `${container.containerLevel}%` }}
+                          ></div>
+                        </div>
+                        <span className="ml-2 text-sm text-gray-700">{container.containerLevel}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <ContainerStatusBadge status={container.status} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleCollectContainer(container.containerId)}
+                          className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                        >
+                          Schedule Pickup
+                        </button>
+                        <button
+                          onClick={() => navigate(`/admin/containers/${container._id}`)}
+                          className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors text-sm"
+                        >
+                          Details
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
       {/* Filter controls */}
       <div className="mb-6">
         <select
@@ -110,6 +219,7 @@ const ContainerManagement = () => {
         >
           <option value="">All Containers</option>
           <option value="Available">Available</option>
+          <option value="Near Full">Near Full</option>
           <option value="Full">Full</option>
           <option value="Needs Maintenance">Needs Maintenance</option>
           <option value="Out of Service">Out of Service</option>
@@ -157,10 +267,10 @@ const ContainerManagement = () => {
                   <tr key={container._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{container.containerId}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      <div>{container.location}</div>
-                      <div className="text-xs text-gray-400">{container.province}</div>
+                      <div>{container.containerLocation?.address || container.location || 'N/A'}</div>
+                      <div className="text-xs text-gray-400">{container.containerLocation?.province || container.province || 'N/A'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{container.wasteType}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{container.containerType || container.wasteType}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-2 w-24 bg-gray-200 rounded-full overflow-hidden">
@@ -180,12 +290,12 @@ const ContainerManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
-                        {(container.status === 'Full' || container.status === 'Available') && (
+                        {(container.status === 'Full' || container.status === 'Near Full' || container.status === 'Available') && (
                           <button
                             onClick={() => handleCollectContainer(container.containerId)}
                             className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
                           >
-                            Collect
+                            {container.status === 'Full' || container.status === 'Near Full' ? 'Schedule Pickup' : 'Collect'}
                           </button>
                         )}
                         {container.status !== 'Needs Maintenance' && container.status !== 'Out of Service' && (
@@ -269,6 +379,7 @@ const getColorByLevel = (level) => {
 const ContainerStatusBadge = ({ status }) => {
   const statusStyles = {
     'Available': 'bg-green-100 text-green-800',
+    'Near Full': 'bg-yellow-100 text-yellow-800',
     'Full': 'bg-red-100 text-red-800',
     'Needs Maintenance': 'bg-yellow-100 text-yellow-800',
     'Out of Service': 'bg-gray-100 text-gray-800'

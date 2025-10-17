@@ -212,6 +212,30 @@ const containerService = {
       throw error;
     }
   },
+
+  /**
+   * Schedule a collection for a container
+   * @param {String} containerId - Container ID
+   * @returns {Promise} Success message
+   */
+  scheduleCollection: async (containerId) => {
+    try {
+      // Use the container schedule-collection endpoint directly
+      const response = await api.put(
+        API_ENDPOINTS.CONTAINERS.SCHEDULE_COLLECTION(containerId),
+        { 
+          collectionScheduled: true,
+          scheduledDate: new Date().toISOString().split('T')[0],
+          
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error scheduling collection for container ${containerId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default containerService;
