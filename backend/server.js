@@ -4,10 +4,10 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import walletRoutes from './routes/walletRoutes.js';
 import authRoutes from "./routes/authRoutes.js";
-import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js"; // Import waste collection routes
-import rewardRoutes from "./routes/rewardRoutes.js"; // Import reward routes
-import billRoutes from './routes/billRoutes.js'; // Add this line
-import transactionRoutes from './routes/transactionRoutes.js'; // Add this line
+import wasteCollectionRoutes from "./routes/wasteCollectionRoutes.js";
+import rewardRoutes from "./routes/rewardRoutes.js";
+import billRoutes from './routes/billRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
 import containerRoutes from "./routes/containerRoutes.js";
 import { simulateSensorData } from "./utils/sensorSimulator.js";
 
@@ -31,22 +31,21 @@ app.get("/", (req, res) => {
 import authMiddleware from './middleware/authMiddleware.js';
 import outstandingBillsMiddleware from './middleware/outstandingBillsMiddleware.js';
 
-// IMPORTANT: Register the auth middleware BEFORE applying outstandingBillsMiddleware
+// Register routes BEFORE applying middleware to waste-collection
+app.use("/api/auth", authRoutes);
+app.use('/api/wallet', authMiddleware, walletRoutes);
+app.use("/api/rewards", authMiddleware, rewardRoutes);
+app.use('/api/bills', authMiddleware, billRoutes); // <-- Make sure this is here
+app.use('/api/transactions', authMiddleware, transactionRoutes);
+app.use("/api/containers", containerRoutes);
+
+// Then apply middleware and routes for waste-collection
 app.use('/api/waste-collection', authMiddleware);
 app.use('/api/waste-collection', outstandingBillsMiddleware);
-
-// Then register your route handlers
-app.use('/api/waste-collection', wasteCollectionRoutes); // Add waste collection routes
-app.use("/api/auth", authRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use("/api/rewards", rewardRoutes); // Add reward routes
-app.use('/api/bills', billRoutes); // Add this line
-app.use('/api/transactions', transactionRoutes); // Add this line
+app.use('/api/waste-collection', wasteCollectionRoutes);
 
 // Import hooks to activate them
 import './hooks/wasteCollectionHooks.js';
-app.use("/api/waste-collection", wasteCollectionRoutes); // Add waste collection routes
-app.use("/api/containers", containerRoutes);
 
 // Example test route (for CRUD later)
 app.get("/api/test", (req, res) => {
