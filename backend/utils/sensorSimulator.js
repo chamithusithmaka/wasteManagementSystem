@@ -88,16 +88,22 @@ export async function simulateSensorData(containerId) {
 
 /**
  * Updates all container levels by 2% every minute
- * Only updates containers that have location assigned
+ * Only updates containers that have location assigned and are not deactivated
  */
 async function updateAllContainerLevels() {
   try {
     const containers = await containerService.getAllContainers();
     
     for (const container of containers) {
-      // Only update if location is assigned
+      // Skip containers that don't have location assigned
       if (!isLocationAssigned(container)) {
         console.log(`📡 Skipping Level Update -> Container ${container.containerId}: No location assigned`);
+        continue;
+      }
+
+      // Skip containers that are deactivated (Out of Service with no error)
+      if (container.status === 'Out of Service' && !container.isErrorDetected) {
+        console.log(`📡 Skipping Level Update -> Container ${container.containerId}: Container deactivated`);
         continue;
       }
 
@@ -148,23 +154,28 @@ async function fixRandomContainerError() {
 
 /**
  * Triggers errors for 2% of total containers every 4 minutes
- * Only triggers errors for containers with assigned locations
+ * Only triggers errors for containers with assigned locations and not deactivated
  */
 async function triggerRandomContainerErrors() {
   try {
-    // Get all containers that don't have errors and have location assigned
+    // Get all containers that don't have errors, have location assigned, and are not deactivated
     const allContainers = await containerService.getAllContainers();
     const containersWithoutErrors = allContainers.filter(container => 
-      !container.isErrorDetected && isLocationAssigned(container)
+      !container.isErrorDetected && 
+      isLocationAssigned(container) && 
+      !(container.status === 'Out of Service' && !container.isErrorDetected) // Not deactivated
     );
     
     if (containersWithoutErrors.length === 0) {
-      console.log(`⚠️ Auto Error Trigger -> No containers with assigned locations available to trigger errors`);
+      console.log(`⚠️ Auto Error Trigger -> No active containers with assigned locations available to trigger errors`);
       return;
     }
 
-    // Calculate 2% of total containers with assigned locations (minimum 1 container)
-    const eligibleContainers = allContainers.filter(container => isLocationAssigned(container));
+    // Calculate 2% of total active containers with assigned locations (minimum 1 container)
+    const eligibleContainers = allContainers.filter(container => 
+      isLocationAssigned(container) && 
+      !(container.status === 'Out of Service' && !container.isErrorDetected) // Not deactivated
+    );
     const totalEligibleContainers = eligibleContainers.length;
     const errorCount = Math.max(1, Math.ceil(totalEligibleContainers * 0.02));
     

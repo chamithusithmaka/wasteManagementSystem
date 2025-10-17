@@ -140,8 +140,8 @@ class ContainerService {
       updateData.status = 'Needs Maintenance';
     }
 
-    // Business logic: If marking as Out of Service, set error flag
-    if (updateData.status === 'Out of Service') {
+    // Business logic: If marking as Out of Service, only set error flag if not explicitly set to false (deactivation case)
+    if (updateData.status === 'Out of Service' && updateData.isErrorDetected !== false) {
       updateData.isErrorDetected = true;
     }
 
@@ -319,19 +319,19 @@ class ContainerService {
       throw new Error(`Container ${id} not found`);
     }
 
-    // Business logic: Set to Out of Service and mark as error detected
+    // Business logic: Set to Out of Service, reset level to zero, and mark as deactivated (not error)
+    const updateData = {
+      status: 'Out of Service',
+      containerLevel: 0,
+      isErrorDetected: false // Not an error, it's intentionally deactivated (status=Out of Service + isErrorDetected=false = deactivated)
+    };
+
     if (isMongoId) {
       // Use MongoDB _id for update
-      return await containerRepository.updateById(id, {
-        status: 'Out of Service',
-        isErrorDetected: true
-      });
+      return await containerRepository.updateById(id, updateData);
     } else {
       // Use business containerId for update
-      return await containerRepository.updateByContainerId(id, {
-        status: 'Out of Service',
-        isErrorDetected: true
-      });
+      return await containerRepository.updateByContainerId(id, updateData);
     }
   }
 
@@ -359,6 +359,50 @@ class ContainerService {
     // Business logic: Location is considered assigned if both address and city are present
     const location = container.containerLocation;
     return !!(location && location.address && location.city);
+  }
+
+  /**
+   * Reactivate a deactivated container
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
+   * @returns {Promise<Object|null>} Updated container
+   */
+  async reactivateContainer(id) {
+    let container = null;
+    let isMongoId = false;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+      isMongoId = true;
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
+    if (!container) {
+      throw new Error(`Container ${id} not found`);
+    }
+
+    // Check if container is deactivated (Out of Service + no error)
+    if (!(container.status === 'Out of Service' && !container.isErrorDetected)) {
+      throw new Error(`Container ${id} is not in deactivated state`);
+    }
+
+    // Business logic: Reactivate container by setting status to Available
+    const updateData = {
+      status: 'Available',
+      isErrorDetected: false
+      // Keep the level as is (it should be 0 from deactivation)
+    };
+
+    if (isMongoId) {
+      // Use MongoDB _id for update
+      return await containerRepository.updateById(id, updateData);
+    } else {
+      // Use business containerId for update
+      return await containerRepository.updateByContainerId(id, updateData);
+    }
   }
 
   /**

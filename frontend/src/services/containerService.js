@@ -181,7 +181,8 @@ const containerService = {
   filterContainers: async (filters) => {
     try {
       // Get all containers first (since backend doesn't have filter endpoint yet)
-      const allContainers = await containerService.getAllContainers();
+      const response = await api.get(API_ENDPOINTS.CONTAINERS.GET_ALL);
+      const allContainers = response.data;
       
       // Apply filters client-side
       let filtered = allContainers;

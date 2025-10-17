@@ -1,22 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import containerService from "../../services/containerService";
+import { CONTAINER_CONSTANTS, PROVINCES } from "../../constants/container";
 
 const ContainerForm = () => {
   const navigate = useNavigate();
-
-  // Sri Lankan provinces
-  const provinces = [
-    'Western Province',
-    'Central Province',
-    'Southern Province',
-    'Northern Province',
-    'Eastern Province',
-    'North Western Province',
-    'North Central Province',
-    'Uva Province',
-    'Sabaragamuwa Province'
-  ];
 
   const [formData, setFormData] = useState({
     containerId: "",
@@ -156,14 +144,14 @@ const ContainerForm = () => {
           required
         >
           <option value="">Select Type</option>
-          <option value="organic">Organic</option>
-          <option value="polythene">Polythene</option>
-          <option value="plastic">Plastic</option>
-          <option value="glass">Glass</option>
-          <option value="metal">Metal</option>
-          <option value="paper">Paper</option>
-          <option value="cardboard">Cardboard</option>
-          <option value="mixed">Mixed</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.ORGANIC}>Organic</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.POLYTHENE}>Polythene</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.PLASTIC}>Plastic</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.GLASS}>Glass</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.METAL}>Metal</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.PAPER}>Paper</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.CARDBOARD}>Cardboard</option>
+          <option value={CONTAINER_CONSTANTS.TYPES.MIXED}>Mixed</option>
         </select>
       </div>
 
@@ -203,7 +191,7 @@ const ContainerForm = () => {
           className="w-full border rounded p-2"
         >
           <option value="">Select Province (can be assigned later)</option>
-          {provinces.map((province) => (
+          {PROVINCES.map((province) => (
             <option key={province} value={province}>
               {province}
             </option>
@@ -220,9 +208,9 @@ const ContainerForm = () => {
           value={formData.containerCapacity}
           onChange={handleChange}
           className="w-full border rounded p-2"
-          placeholder="100"
+          placeholder={CONTAINER_CONSTANTS.DEFAULTS.DEFAULT_CAPACITY.toString()}
           required
-          min="1"
+          min={CONTAINER_CONSTANTS.DEFAULTS.MIN_CAPACITY}
         />
       </div>
 

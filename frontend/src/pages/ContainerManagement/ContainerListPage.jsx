@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { Search, Filter, Edit, Trash2, AlertTriangle } from 'lucide-react'
-import { containers, cities, areas } from '../../data/mockData'
+import { useContainerManagement } from '../../hooks/useContainerManagement'
+import { CONTAINER_CONSTANTS, PROVINCES } from '../../constants/container'
 
 const ContainerListPage = () => {
+  const { containers, loading, error } = useContainerManagement()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedArea, setSelectedArea] = useState('')
@@ -11,21 +13,26 @@ const ContainerListPage = () => {
   const [editingContainer, setEditingContainer] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const itemsPerPage = 5
+  const itemsPerPage = CONTAINER_CONSTANTS.PAGINATION.DEFAULT_PAGE_SIZE
+
+  // Get unique cities from containers
+  const cities = [...new Set(containers.map(c => c.containerLocation?.city).filter(Boolean))]
+  // Get unique areas (using province as area since that's what we have)
+  const areas = [...new Set(containers.map(c => c.containerLocation?.province).filter(Boolean))]
 
   // Filter containers
   const filteredContainers = containers.filter((container) => {
     const matchesSearch =
-      container.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      container.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCity = selectedCity === '' || container.city === selectedCity
-    const matchesArea = selectedArea === '' || container.area === selectedArea
+      container.containerId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      container.containerLocation?.address?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCity = selectedCity === '' || container.containerLocation?.city === selectedCity
+    const matchesArea = selectedArea === '' || container.containerLocation?.province === selectedArea
     let matchesStatus = true
     if (selectedStatus === 'Error') matchesStatus = container.isErrorDetected
-    else if (selectedStatus === 'Near Full')
-      matchesStatus = container.fillLevel >= 80 && !container.isErrorDetected
-    else if (selectedStatus === 'Normal')
-      matchesStatus = container.fillLevel < 80 && !container.isErrorDetected
+    else if (selectedStatus === CONTAINER_CONSTANTS.STATUS.NEAR_FULL)
+      matchesStatus = container.containerLevel >= CONTAINER_CONSTANTS.THRESHOLDS.NEAR_FULL && !container.isErrorDetected
+    else if (selectedStatus === CONTAINER_CONSTANTS.STATUS.AVAILABLE)
+      matchesStatus = container.containerLevel < CONTAINER_CONSTANTS.THRESHOLDS.NEAR_FULL && !container.isErrorDetected
     return matchesSearch && matchesCity && matchesArea && matchesStatus
   })
 
@@ -62,6 +69,29 @@ const ContainerListPage = () => {
     e.preventDefault()
     console.log('Updated container:', editingContainer)
     closeModal()
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4">
+        <div className="text-center py-8">
+          <div className="text-gray-600">Loading containers...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={20} />
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -117,8 +147,8 @@ const ContainerListPage = () => {
             >
               <option value="">All Status</option>
               <option value="Error">Error</option>
-              <option value="Near Full">Near Full</option>
-              <option value="Normal">Normal</option>
+              <option value={CONTAINER_CONSTANTS.STATUS.NEAR_FULL}>Near Full</option>
+              <option value={CONTAINER_CONSTANTS.STATUS.AVAILABLE}>Normal</option>
             </select>
             <button className="bg-gray-100 text-gray-700 px-3 py-2 rounded-md flex items-center gap-1 hover:bg-gray-200">
               <Filter size={18} /> Reset
@@ -153,32 +183,32 @@ const ContainerListPage = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedContainers.map((container) => (
-                <tr key={container.id} className="hover:bg-green-50">
+                <tr key={container._id} className="hover:bg-green-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {container.id}
+                    {container.containerId}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {container.location}
+                    {container.containerLocation?.address || 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {container.city}, {container.area}
+                    {container.containerLocation?.city || 'N/A'}, {container.containerLocation?.province || 'N/A'}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="w-16 bg-gray-200 rounded-full h-2.5">
                         <div
                           className={`h-2.5 rounded-full ${
-                            container.fillLevel >= 90
+                            container.containerLevel >= CONTAINER_CONSTANTS.THRESHOLDS.FULL
                               ? 'bg-red-500'
-                              : container.fillLevel >= 80
+                              : container.containerLevel >= CONTAINER_CONSTANTS.THRESHOLDS.NEAR_FULL
                               ? 'bg-yellow-500'
                               : 'bg-green-500'
                           }`}
-                          style={{ width: `${container.fillLevel}%` }}
+                          style={{ width: `${container.containerLevel}%` }}
                         />
                       </div>
                       <span className="ml-2 text-sm text-gray-500">
-                        {container.fillLevel}%
+                        {container.containerLevel}%
                       </span>
                     </div>
                   </td>
@@ -187,7 +217,7 @@ const ContainerListPage = () => {
                       <span className="flex items-center text-xs font-semibold text-red-700">
                         <AlertTriangle size={14} className="mr-1" /> Error
                       </span>
-                    ) : container.fillLevel >= 80 ? (
+                    ) : container.containerLevel >= CONTAINER_CONSTANTS.THRESHOLDS.NEAR_FULL ? (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                         Near Full
                       </span>
@@ -198,7 +228,7 @@ const ContainerListPage = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(container.lastUpdated).toLocaleString()}
+                    {new Date(container.installationDate).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-sm flex gap-2">
                     <button

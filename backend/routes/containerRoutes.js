@@ -23,8 +23,10 @@ router.put("/:id/location", containerController.sendLocation);
 router.get("/:id/location-assigned", containerController.checkLocationAssigned);
 // Schedule collection for a container
 router.put("/:id/schedule-collection", containerController.scheduleCollection);
-// Deactivate container (set to Out of Service)
+// Deactivate container (set to Out of Service with level 0)
 router.put("/:id/deactivate", containerController.deactivate);
+// Reactivate a deactivated container (set to Available)
+router.put("/:id/reactivate", containerController.reactivate);
 router.delete("/:id", containerController.delete);
 
 export default router;

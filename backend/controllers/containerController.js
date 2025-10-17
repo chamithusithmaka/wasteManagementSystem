@@ -269,6 +269,19 @@ class ContainerController {
       return res.status(500).json({ error: err.message });
     }
   }
+
+  async reactivate(req, res) {
+    try {
+      const reactivated = await containerService.reactivateContainer(req.params.id);
+      if (!reactivated) return res.status(404).json({ message: "Container not found" });
+      return res.json({ 
+        message: "Container reactivated successfully",
+        container: reactivated
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 }
 
 export default new ContainerController();
