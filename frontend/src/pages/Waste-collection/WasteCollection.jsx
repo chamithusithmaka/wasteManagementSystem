@@ -18,6 +18,40 @@ const sampleHistory = [
   { date: '2024-09-28', type: 'General Waste', status: 'Completed', conf: 'GC-33445' },
 ];
 
+// Time-Restricted Cancellation Modal
+const CancellationModal = ({ show, onClose, message }) => {
+  if (!show) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-xl transform transition-all">
+        <div className="flex items-center mb-4">
+          <div className="bg-red-100 p-2 rounded-full mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900">Cancellation Restricted</h3>
+        </div>
+        
+        <div className="mt-3 text-sm text-gray-600">
+          <p>{message}</p>
+          <p className="mt-2">For urgent changes to your scheduled pickup, please contact customer support.</p>
+        </div>
+        
+        <div className="mt-5">
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition"
+          >
+            I Understand
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Simple status badge component
 const StatusBadge = ({ status }) => {
   const map = {
@@ -50,7 +84,7 @@ const StatCard = ({ title, value, subtitle, isLoading = false }) => (
 );
 
 // Single pickup item
-const PickupItem = React.memo(({ pickup, onCancelPickup }) => {
+const PickupItem = React.memo(({ pickup, onCancelPickup, onCancelAttempt }) => {
   // Format the date nicely
   const formattedDate = new Date(pickup.date).toLocaleDateString(undefined, { 
     month: 'long', 
@@ -69,6 +103,14 @@ const PickupItem = React.memo(({ pickup, onCancelPickup }) => {
   };
 
   const canCancel = pickup.status === 'Scheduled' && isWithin2Hours();
+  const handleCancelClick = () => {
+    if (canCancel) {
+      onCancelPickup(pickup._id || pickup.id);
+    } else if (pickup.status === 'Scheduled') {
+      // Show the modal if pickup can't be canceled due to time restriction
+      onCancelAttempt();
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl p-4 mb-3 shadow-sm flex justify-between items-center">
@@ -88,16 +130,13 @@ const PickupItem = React.memo(({ pickup, onCancelPickup }) => {
       </div>
       <div className="ml-4 flex flex-col items-end gap-2">
         <StatusBadge status={pickup.status} />
-        {canCancel && (
+        {pickup.status === 'Scheduled' && (
           <button 
-            onClick={() => onCancelPickup(pickup._id || pickup.id)}
+            onClick={handleCancelClick}
             className="text-xs text-red-600 hover:text-red-800"
           >
             Cancel
           </button>
-        )}
-        {pickup.status === 'Scheduled' && !canCancel && (
-          <div className="text-xs text-gray-400">Cannot cancel after 2 hours</div>
         )}
       </div>
     </div>
@@ -130,6 +169,10 @@ const WasteCollection = () => {
   const [error, setError] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancellationError, setCancellationError] = useState('');
+  
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   // Fetch data from API
   useEffect(() => {
@@ -202,9 +245,21 @@ const WasteCollection = () => {
     } catch (err) {
       console.error('Error cancelling pickup:', err);
       setCancellationError(err.message || 'Failed to cancel pickup');
+      
+      // Check if the error is due to time restriction
+      if (err.message?.includes('within 2 hours')) {
+        setModalMessage('This pickup cannot be cancelled because it was created more than 2 hours ago.');
+        setShowModal(true);
+      }
     } finally {
       setCancelling(false);
     }
+  };
+
+  // Handle cancellation attempt for pickups older than 2 hours
+  const handleCancelAttempt = () => {
+    setModalMessage('Pickups can only be cancelled within 2 hours of scheduling. This pickup was created more than 2 hours ago.');
+    setShowModal(true);
   };
 
   return (
@@ -217,6 +272,20 @@ const WasteCollection = () => {
           {error}
         </div>
       )}
+
+      {/* Show cancellation error if any */}
+      {cancellationError && !cancellationError.includes('within 2 hours') && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          {cancellationError}
+        </div>
+      )}
+
+      {/* Cancellation Modal */}
+      <CancellationModal 
+        show={showModal} 
+        onClose={() => setShowModal(false)} 
+        message={modalMessage}
+      />
 
       {/* Top analytics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -276,7 +345,8 @@ const WasteCollection = () => {
                 <div key={pickup._id || pickup.id} className="animate-fade-up">
                   <PickupItem 
                     pickup={pickup} 
-                    onCancelPickup={handleCancelPickup} 
+                    onCancelPickup={handleCancelPickup}
+                    onCancelAttempt={handleCancelAttempt}
                   />
                 </div>
               ))}
