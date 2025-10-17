@@ -50,13 +50,25 @@ const StatCard = ({ title, value, subtitle, isLoading = false }) => (
 );
 
 // Single pickup item
-const PickupItem = React.memo(({ pickup }) => {
+const PickupItem = React.memo(({ pickup, onCancelPickup }) => {
   // Format the date nicely
   const formattedDate = new Date(pickup.date).toLocaleDateString(undefined, { 
     month: 'long', 
     day: 'numeric', 
     year: 'numeric' 
   });
+
+  // Check if pickup is within 2 hours of creation
+  const isWithin2Hours = () => {
+    const createdAt = pickup.createdAt 
+      ? new Date(pickup.createdAt) 
+      : new Date(pickup._id ? parseInt(pickup._id.substring(0, 8), 16) * 1000 : Date.now());
+    
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    return createdAt > twoHoursAgo;
+  };
+
+  const canCancel = pickup.status === 'Scheduled' && isWithin2Hours();
 
   return (
     <div className="bg-white rounded-xl p-4 mb-3 shadow-sm flex justify-between items-center">
@@ -74,8 +86,19 @@ const PickupItem = React.memo(({ pickup }) => {
           <div className="text-xs text-green-600 mt-1">ID: {pickup.confirmationId}</div>
         )}
       </div>
-      <div className="ml-4">
+      <div className="ml-4 flex flex-col items-end gap-2">
         <StatusBadge status={pickup.status} />
+        {canCancel && (
+          <button 
+            onClick={() => onCancelPickup(pickup._id || pickup.id)}
+            className="text-xs text-red-600 hover:text-red-800"
+          >
+            Cancel
+          </button>
+        )}
+        {pickup.status === 'Scheduled' && !canCancel && (
+          <div className="text-xs text-gray-400">Cannot cancel after 2 hours</div>
+        )}
       </div>
     </div>
   );
@@ -105,6 +128,8 @@ const WasteCollection = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancellationError, setCancellationError] = useState('');
 
   // Fetch data from API
   useEffect(() => {
@@ -157,6 +182,30 @@ const WasteCollection = () => {
       `You have earned ${analytics.rewards} reward points. Redeem in Payments & Rewards.`,
     ];
   }, [analytics]);
+
+  // Handle pickup cancellation
+  const handleCancelPickup = async (id) => {
+    if (!id || cancelling) return;
+    
+    try {
+      setCancelling(true);
+      setCancellationError('');
+      
+      await WasteCollectionService.cancelPickupWithTimeRestriction(id);
+      
+      // Refresh the pickups list
+      const updatedPickups = await WasteCollectionService.getUserPickups('Scheduled');
+      setPickups(updatedPickups);
+      
+      // Show success message
+      alert('Pickup cancelled successfully');
+    } catch (err) {
+      console.error('Error cancelling pickup:', err);
+      setCancellationError(err.message || 'Failed to cancel pickup');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div>
@@ -225,7 +274,10 @@ const WasteCollection = () => {
             <div className="space-y-2">
               {pickups.map(pickup => (
                 <div key={pickup._id || pickup.id} className="animate-fade-up">
-                  <PickupItem pickup={pickup} />
+                  <PickupItem 
+                    pickup={pickup} 
+                    onCancelPickup={handleCancelPickup} 
+                  />
                 </div>
               ))}
             </div>

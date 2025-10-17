@@ -34,7 +34,7 @@ class WasteCollectionRepository {
    * @returns {Promise<Object|null>} Waste collection document or null
    */
   static async findById(pickupId) {
-    return await WasteCollection.findById(pickupId);
+    return await WasteCollection.findById(pickupId).exec();
   }
 
   /**

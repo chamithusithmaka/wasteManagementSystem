@@ -18,6 +18,7 @@ router.get('/stats', WasteCollectionController.getUserStats);
 router.get('/:id', WasteCollectionController.getPickup);
 router.put('/:id', WasteCollectionController.updatePickup);
 router.delete('/:id', WasteCollectionController.cancelPickup);
+router.put('/:id/cancel-with-restriction', WasteCollectionController.cancelPickupWithTimeRestriction); // Changed from DELETE to PUT
 
 // Admin routes
 router.get('/admin/all', WasteCollectionController.getAllPickups);

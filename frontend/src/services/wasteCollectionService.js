@@ -134,6 +134,26 @@ class WasteCollectionService {
     }
   }
 
+  // Cancel a pickup with time restriction
+  static async cancelPickupWithTimeRestriction(id) {
+    try {
+      const response = await fetch(`${API_URL}/${id}/cancel-with-restriction`, {
+        method: 'PUT',  // Changed from DELETE to PUT
+        headers: this.getHeaders()
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to cancel pickup');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error cancelling pickup:', error);
+      throw error;
+    }
+  }
+
   // For admin: Get all pickups (with pagination)
   static async getAllPickups(status = null, page = 1, limit = 20) {
     try {

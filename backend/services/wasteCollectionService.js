@@ -48,6 +48,39 @@ class WasteCollectionService {
     }
   }
 
+  // Cancel pickup with time restriction
+  static async cancelPickupWithTimeRestriction(pickupId, userId) {
+    try {
+      const pickup = await WasteCollectionRepository.findById(pickupId);
+      
+      if (!pickup) {
+        throw new Error('Pickup not found');
+      }
+      
+      // Check if pickup belongs to the user
+      if (pickup.userId.toString() !== userId.toString()) {
+        throw new Error('Not authorized to cancel this pickup');
+      }
+      
+      // Check if pickup is in a cancellable status
+      if (pickup.status !== 'Scheduled' && pickup.status !== 'Pending') {
+        throw new Error(`Cannot cancel a pickup that is already ${pickup.status}`);
+      }
+      
+      // Check if pickup was created within the last 2 hours
+      const createdAt = pickup.createdAt || pickup._id.getTimestamp();
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      
+      if (createdAt < twoHoursAgo) {
+        throw new Error('Pickup can only be cancelled within 2 hours of creation');
+      }
+      
+      return await WasteCollectionRepository.updateById(pickupId, { status: 'Cancelled' });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Admin: Get all pickups with filtering and pagination
   static async getAllPickups(filter = {}, page = 1, limit = 20) {
     try {
