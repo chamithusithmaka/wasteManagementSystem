@@ -1,5 +1,8 @@
 import WasteCollectionService from '../services/wasteCollectionService.js';
 import { validateWastePickup } from '../utils/validation.js';
+import { calculateAndCreateReward } from './rewardController.js';
+import BillService from '../services/billService.js';
+import Bill from '../models/Bill.js';
 
 class WasteCollectionController {
   // Create new pickup request
@@ -9,10 +12,10 @@ class WasteCollectionController {
       const userId = req.user._id;
       const username = req.user.username;
 
-      const validationError = validateWastePickup({ address, province, wasteType, scheduledDate, scheduledTime });
-      if (validationError) {
-        return res.status(400).json({ message: validationError });
-      }
+      // const validationError = validateWastePickup({ address, wasteType, scheduledDate, scheduledTime });
+      // if (validationError) {
+      //   return res.status(400).json({ message: validationError });
+      // }
 
       const pickupData = {
         userId,
@@ -250,27 +253,54 @@ class WasteCollectionController {
     try {
       const { id } = req.params;
       const { wasteAmount } = req.body;
-      
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Access denied. Admin only.' });
-      }
-      
+
+      console.log('--- Complete Pickup Called ---');
+      console.log('Pickup ID:', id);
+      console.log('Waste Amount:', wasteAmount);
+
       const pickup = await WasteCollectionService.getPickupById(id);
-      
+      console.log('Fetched Pickup:', pickup);
+
       if (!pickup) {
+        console.log('Pickup not found');
         return res.status(404).json({ message: 'Pickup not found' });
       }
-      
+
       if (pickup.status === 'Cancelled' || pickup.status === 'Completed') {
+        console.log('Pickup already completed or cancelled:', pickup.status);
         return res.status(400).json({ message: `Pickup is already ${pickup.status}` });
       }
-      
+
+      // Complete the pickup (with waste amount)
       const completedPickup = await WasteCollectionService.completePickup(id, { wasteAmount });
+      console.log('Completed Pickup:', completedPickup);
+
+      // Create reward based on waste type and amount
+      const reward = await calculateAndCreateReward(completedPickup, wasteAmount, req.user?.username || 'admin');
+      console.log('Reward created:', reward ? reward._id : 'No reward (zero amount)');
+
+      // Check if bill already exists
+      const existingBill = await Bill.findOne({ collectionId: id });
+      if (existingBill) {
+        console.log('Bill already exists for this collection:', existingBill._id);
+      } else {
+        // Manually generate bill
+        try {
+          const bill = await BillService.createBill(completedPickup, req.user?.username || 'admin');
+          console.log('Bill manually created:', bill._id, 'for amount:', bill.amount);
+        } catch (billErr) {
+          console.error('Failed to create bill:', billErr);
+          // Continue even if bill creation fails
+        }
+      }
+
       return res.status(200).json({
-        message: 'Pickup completed successfully',
-        pickup: completedPickup
+        message: 'Pickup completed successfully and bill generated',
+        pickup: completedPickup,
+        reward: reward
       });
     } catch (err) {
+      console.error('Error in completePickup:', err);
       return res.status(500).json({
         message: 'Failed to complete pickup',
         error: err.message

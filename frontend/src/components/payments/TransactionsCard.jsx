@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TransactionsCard = ({ transactions, onViewReceipt }) => {
+const TransactionsCard = ({ transactions, onViewReceipt, onExpand, showAll, canExpand }) => {
   // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -92,10 +92,13 @@ const TransactionsCard = ({ transactions, onViewReceipt }) => {
         </div>
       )}
       
-      {transactions.length > 0 && (
+      {canExpand && (
         <div className="mt-4 text-center">
-          <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-            View All Transactions
+          <button
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            onClick={onExpand}
+          >
+            {showAll ? "Show Less" : "View All Transactions"}
           </button>
         </div>
       )}
