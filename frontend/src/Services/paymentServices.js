@@ -1,5 +1,5 @@
 const API_URL = "http://localhost:5000/api/wallet";
-
+const BILL_API_URL = "http://localhost:5000/api/bills";
 
 // Helper to get auth token
 const getAuthToken = () => {
@@ -81,4 +81,19 @@ export const getWalletTransactions = async (residentId) => {
   const res = await fetch(`${API_URL}/${residentId}/transactions`);
   if (!res.ok) throw new Error("Failed to fetch transactions");
   return await res.json();
+};
+
+// Get current month's bills for the logged-in user
+export const getCurrentMonthBills = async () => {
+  const res = await fetch(`${BILL_API_URL}/current-month`, {
+    headers: {
+      'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Failed to fetch current month bills");
+  }
+  return (await res.json()).bills;
 };

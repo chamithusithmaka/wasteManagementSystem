@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { getWallet, addFunds } from '../Services/paymentServices';
+import { getWallet, addFunds, getCurrentMonthBills } from '../Services/paymentServices';
 import { getResidentRewards } from '../Services/rewardServices';
 import { getUserBills, payMultipleBills } from '../Services/billServices'; // Add this import
 import { getRecentTransactions } from '../Services/transactionServices.js';
@@ -22,6 +22,7 @@ const PaymentsPage = () => {
   const [bills, setBills] = useState([]); // Start with empty array
   const [rewards, setRewards] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [currentMonthBills, setCurrentMonthBills] = useState([]);
 
   const [selectedBillIds, setSelectedBillIds] = useState([]);
   const [showAddWallet, setShowAddWallet] = useState(false);
@@ -37,6 +38,8 @@ const PaymentsPage = () => {
   const [checkoutStatus, setCheckoutStatus] = useState("idle");
   const [checkoutReceipt, setCheckoutReceipt] = useState(null);
   const [showBillsSection, setShowBillsSection] = useState(false); // Add this state
+  const [txnLimit, setTxnLimit] = useState(5);
+  const [showAllTxns, setShowAllTxns] = useState(false);
 
   // Fetch wallet, transactions, rewards, and bills on mount or when user changes
   useEffect(() => {
@@ -50,7 +53,7 @@ const PaymentsPage = () => {
         });
       
       // Fetch transactions using new service
-      getRecentTransactions(5)
+      getRecentTransactions(txnLimit)
         .then(transactions => {
           const mapped = transactions.map(txn => ({
             id: txn._id,
@@ -103,8 +106,29 @@ const PaymentsPage = () => {
           console.error('Failed to fetch bills:', err);
           setBills([]);
         });
+    
+      // Fetch current month bills from backend
+      getCurrentMonthBills()
+        .then(bills => {
+          // Map to match UI format if needed
+          const mapped = bills.map(bill => ({
+            id: bill._id,
+            title: bill.title,
+            dueDate: bill.dueDate,
+            tags: bill.tags || [],
+            amount: bill.amount,
+            status: bill.status,
+            invoiceNumber: bill.invoiceNumber,
+            collectionId: bill.collectionId
+          }));
+          setCurrentMonthBills(mapped);
+        })
+        .catch(err => {
+          console.error('Failed to fetch current month bills:', err);
+          setCurrentMonthBills([]);
+        });
     }
-  }, [user]);
+  }, [user, txnLimit]);
 
   // Bill selection logic
   const handleSelectBill = (billId) => {
@@ -116,12 +140,17 @@ const PaymentsPage = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedBillIds.length === bills.length) {
-      setSelectedBillIds([]);
-    } else {
-      setSelectedBillIds(bills.map((b) => b.id));
-    }
-  };
+  // Only select bills that are not paid
+  const unpaidBillIds = bills
+    .filter(bill => bill.status === 'due' || bill.status === 'overdue')
+    .map(bill => bill.id);
+
+  if (selectedBillIds.length === unpaidBillIds.length) {
+    setSelectedBillIds([]);
+  } else {
+    setSelectedBillIds(unpaidBillIds);
+  }
+};
 
   // Add funds to wallet
   const handleAddFunds = async (amount) => {
@@ -328,6 +357,91 @@ const PaymentsPage = () => {
   const unpaidBills = bills.filter(bill => bill.status === "overdue" || bill.status === "due");
   const overdueBills = bills.filter(bill => bill.status === 'overdue'); // <-- Added this line
 
+  // New function to refresh all payment data
+  const refreshAllPaymentData = async () => {
+    if (user?.id) {
+      // Refresh wallet
+      getWallet().then(setWallet).catch(() => setWallet({ balance: 0 }));
+
+      // Refresh transactions
+      getRecentTransactions(txnLimit)
+        .then(transactions => {
+          const mapped = transactions.map(txn => ({
+            id: txn._id,
+            type: txn.type === "CREDIT" ? "topup" : "payment",
+            label: txn.note,
+            date: txn.createdAt,
+            amount: txn.type === "DEBIT" ? -Math.abs(txn.amount) : Math.abs(txn.amount),
+            paymentMethod: txn.paymentMethod,
+            status: txn.status
+          }));
+          setTransactions(mapped);
+        })
+        .catch(() => setTransactions([]));
+
+      // Refresh rewards
+      getResidentRewards()
+        .then(data => {
+          const mappedRewards = data.map(reward => ({
+            id: reward._id,
+            label: reward.label,
+            date: reward.date,
+            amount: reward.amount,
+            description: reward.description,
+            type: reward.type
+          }));
+          setRewards(mappedRewards);
+        })
+        .catch(() => setRewards([]));
+
+      // Refresh bills
+      getUserBills()
+        .then(data => {
+          const mappedBills = data.map(bill => ({
+            id: bill._id,
+            title: bill.title,
+            dueDate: bill.dueDate,
+            tags: bill.tags || [],
+            amount: bill.amount,
+            status: bill.status,
+            invoiceNumber: bill.invoiceNumber,
+            collectionId: bill.collectionId
+          }));
+          setBills(mappedBills);
+        })
+        .catch(() => setBills([]));
+    }
+  };
+
+  // Get current month and year
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  // Filter bills for current month AND status "due"
+  const currentMonthBillsFiltered = bills.filter(bill => {
+    if (!bill.dueDate || bill.status !== "due") return false;
+    
+    const dueDate = new Date(bill.dueDate);
+    const today = new Date();
+    
+    // Check if the bill is due in the current month and year
+    return (
+      dueDate.getMonth() === today.getMonth() &&
+      dueDate.getFullYear() === today.getFullYear()
+    );
+  });
+
+  // Also add logging to debug date issues
+  console.log('Current month/year:', currentMonth, currentYear);
+  console.log('Bills with due dates:', bills.map(b => ({
+    title: b.title, 
+    dueDate: b.dueDate, 
+    status: b.status,
+    month: b.dueDate ? new Date(b.dueDate).getMonth() : 'invalid'
+  })));
+  console.log('Current month bills found:', currentMonthBillsFiltered);
+const currentMonthTotal = currentMonthBills.reduce((sum, bill) => sum + bill.amount, 0);
   return (
     <Layout>
       <div className="min-h-screen">
@@ -352,6 +466,35 @@ const PaymentsPage = () => {
           />
         </div>
         
+        {/* Current Month Bills Section */}
+        <div className="max-w-6xl mx-auto mt-4 px-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+              Current Month Bills
+            </h3>
+            {currentMonthBills.length === 0 ? (
+              <p className="text-gray-500 text-sm">No bills for this month.</p>
+            ) : (
+              <>
+                <ul>
+                  {currentMonthBills.map(bill => (
+                    <li key={bill.id} className="flex justify-between py-1 text-sm">
+                      <span>{bill.title}</span>
+                      <span className="font-medium">
+                        LKR {bill.amount.toFixed(2)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex justify-between mt-2 pt-2 border-t text-base font-semibold text-blue-900">
+                  <span>Total</span>
+                  <span>LKR {currentMonthTotal.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         <div 
           id="bills-section"
           className={`max-w-6xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 px-4 ${
@@ -372,6 +515,17 @@ const PaymentsPage = () => {
           <TransactionsCard
             transactions={transactions}
             onViewReceipt={handleViewReceipt}
+            onExpand={() => {
+              if (showAllTxns) {
+                setTxnLimit(5);
+                setShowAllTxns(false);
+              } else {
+                setTxnLimit(50);
+                setShowAllTxns(true);
+              }
+            }}
+            showAll={showAllTxns}
+            canExpand={transactions.length > 0}
           />
         </div>
         <AddWalletModal
@@ -398,9 +552,18 @@ const PaymentsPage = () => {
         />
         <ReceiptDrawer
           isOpen={showReceipt}
-          onClose={() => setShowReceipt(false)}
+          onClose={() => {
+            setShowReceipt(false);
+            setActiveReceipt(null);
+            refreshAllPaymentData(); // <-- Refresh data after closing receipt
+          }}
           receipt={activeReceipt}
         />
+        
+        {/* Show/Hide All Transactions button */}
+        <div className="flex justify-center mt-2">
+          
+        </div>
       </div>
     </Layout>
   );

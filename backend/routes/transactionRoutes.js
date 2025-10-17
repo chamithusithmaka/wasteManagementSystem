@@ -6,10 +6,8 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-// Updated route for my transactions
 router.get('/my-transactions', getUserTransactions);
 router.get('/:id', getTransactionById);
-// Add this new route
 router.post('/send-receipt', sendReceiptEmail);
 
 export default router;
