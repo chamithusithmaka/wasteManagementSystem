@@ -70,6 +70,15 @@ class ContainerRepository {
   }
 
   /**
+   * Find containers by location (province)
+   * @param {String} province - Province to filter by
+   * @returns {Promise<Array>} Array of container documents
+   */
+  async findByProvince(province) {
+    return await Container.find({ "containerLocation.province": province });
+  }
+
+  /**
    * Find containers that need collection (level >= threshold)
    * @param {Number} threshold - Fill level threshold (default 80)
    * @returns {Promise<Array>} Array of container documents
@@ -134,13 +143,23 @@ class ContainerRepository {
    * @returns {Promise<Object|null>} Updated container document or null
    */
   async updateLevel(containerId, level) {
+    // Determine status based on level
+    let status;
+    if (level >= 95) {
+      status = 'Full';
+    } else if (level >= 80) {
+      status = 'Near Full';
+    } else {
+      status = 'Available';
+    }
+
     return await Container.findOneAndUpdate(
       { containerId },
       { 
         containerLevel: level,
         lastUpdatedDate: new Date(),
         // Auto-update status based on level
-        status: level >= 95 ? 'Full' : 'Available'
+        status: status
       },
       { new: true, runValidators: true }
     );

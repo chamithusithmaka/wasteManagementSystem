@@ -21,11 +21,27 @@ const ContainerSchema = new mongoose.Schema({
   containerLocation: {
     address: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     city: {
       type: String,
+      trim: true,
+    },
+    province: {
+      type: String,
+      required: false,
+      enum: [
+        'Western Province',
+        'Central Province', 
+        'Southern Province',
+        'Northern Province',
+        'Eastern Province',
+        'North Western Province',
+        'North Central Province',
+        'Uva Province',
+        'Sabaragamuwa Province'
+      ],
       trim: true,
     },
     coordinates: {
@@ -56,7 +72,7 @@ const ContainerSchema = new mongoose.Schema({
   status: {
     type: String,
     required: false,
-    enum: ['Available', 'Full', 'Needs Maintenance', 'Out of Service'],
+    enum: ['Available', 'Near Full', 'Full', 'Needs Maintenance', 'Out of Service'],
     default: 'Available', // Auto-set to Available when creating new container
   },
   installationDate: {
