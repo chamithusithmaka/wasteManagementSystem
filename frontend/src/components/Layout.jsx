@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './Sidebar';
 
 const Layout = ({ children }) => {
+  // Debug log to check if Layout component mounts
+  console.log('Layout component mounted/rendered');
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);

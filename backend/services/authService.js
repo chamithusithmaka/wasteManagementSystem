@@ -12,9 +12,9 @@ class AuthService {
     return await User.findById(userId).select('-password');
   }
 
-  // Find user by username or email
+  // Find user by username or email (for login - includes password)
   static async findUserByUsernameOrEmail(username, email) {
-    return await User.findOne({ $or: [{ username }, { email }] });
+    return await User.findOne({ $or: [{ username }, { email }] }).select('+password');
   }
 
   // Create new user (password hashing handled in model)

@@ -175,16 +175,6 @@ const AdminDashboard = () => {
           <p className="text-gray-600">Real-time waste management insights and metrics</p>
         </div>
         <div className="flex items-center gap-3">
-          <select 
-            value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value)}
-            className="px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-500"
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
           <button 
             onClick={fetchDashboardData}
             disabled={refreshing}

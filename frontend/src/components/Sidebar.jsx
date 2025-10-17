@@ -124,7 +124,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm7 12a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H10z" clipRule="evenodd" />
             </svg>
-            <span className="ml-3" onClick={Logout}>Logout</span>
+            <span className="ml-3">Logout</span>
           </button>
         </div>
       </div>

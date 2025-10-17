@@ -239,7 +239,7 @@ userSchema.methods.incrementFailedLoginAttempts = function() {
     this.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
   }
   
-  return this.save();
+  return this.save({ validateBeforeSave: false });
 };
 
 /**
@@ -249,7 +249,7 @@ userSchema.methods.resetFailedLoginAttempts = function() {
   this.failedLoginAttempts = 0;
   this.accountLockedUntil = null;
   this.lastLoginAt = new Date();
-  return this.save();
+  return this.save({ validateBeforeSave: false });
 };
 
 /**
@@ -275,7 +275,7 @@ userSchema.methods.getPublicProfile = function() {
  */
 userSchema.methods.deactivate = function() {
   this.isActive = false;
-  return this.save();
+  return this.save({ validateBeforeSave: false });
 };
 
 /**

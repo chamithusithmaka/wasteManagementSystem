@@ -210,8 +210,8 @@ class AuthController {
         return;
       }
 
-      // Find user and perform security checks
-      const user = await AuthService.findUserByUsername(username.toLowerCase().trim());
+      // Find user by username or email (for flexible login)
+      const user = await AuthService.findUserByUsernameOrEmail(username.toLowerCase().trim(), username.toLowerCase().trim());
       
       if (!user) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json(

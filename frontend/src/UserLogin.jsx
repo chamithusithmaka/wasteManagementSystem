@@ -20,21 +20,11 @@ const UserLogin = () => {
     }
     
     try {
-      console.log('Attempting regular login...'); // Debug log
-      // Make API call to login
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      const data = await UserService.login(username, password);
       
-      const data = await response.json();
-      console.log('Regular login response:', data); // Debug log
-      
-      if (!response.ok) {
-        setError(data.message || 'Login failed. Please check your credentials.');
+      // Validate response data before proceeding
+      if (!data || !data.token || !data.user) {
+        setError((data && data.message) || 'Login failed. Invalid response.');
         return;
       }
       
@@ -47,12 +37,11 @@ const UserLogin = () => {
       }
       
       setError('');
-      console.log('Navigating to dashboard...'); // Debug log
-      // Navigate to dashboard after successful login
+      
+      // Navigate to dashboard
       navigate('/dashboard');
     } catch (err) {
-      console.error('Login error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      setError(err.message || 'Network error. Please try again.');
     }
   };
 
@@ -64,22 +53,17 @@ const UserLogin = () => {
     }
     setAdminError('');
     try {
-      console.log('Attempting admin login...'); // Debug log
       const data = await UserService.login(adminUsername, adminPassword);
-      console.log('Login response:', data); // Debug log
       
       if (!data.token || !data.user) {
-        console.log('Login failed - missing token or user:', { token: !!data.token, user: !!data.user }); // Debug log
         setAdminError(data.message || 'Login failed.');
         return;
       }
       
-      console.log('User role:', data.user.role); // Debug log
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
       if (data.user.role === 'admin') {
-        console.log('Navigating to admin dashboard...'); // Debug log
         // Add a small delay to ensure token is stored
         setTimeout(() => {
           navigate('/admin-dashboard');
@@ -88,7 +72,6 @@ const UserLogin = () => {
         setAdminError('Not an admin account.');
       }
     } catch (err) {
-      console.error('Admin login error:', err); // Debug log
       setAdminError('Network error. Please try again.');
     }
   };
