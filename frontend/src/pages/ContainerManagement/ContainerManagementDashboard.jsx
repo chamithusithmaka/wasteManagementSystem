@@ -662,9 +662,13 @@ const ContainerManagement = () => {
                 >
                   <option value="">Select Type</option>
                   <option value="organic">Organic</option>
-                  <option value="recyclable">Recyclable</option>
-                  <option value="hazardous">Hazardous</option>
-                  <option value="general">General</option>
+                  <option value="polythene">Polythene</option>
+                  <option value="plastic">Plastic</option>
+                  <option value="glass">Glass</option>
+                  <option value="metal">Metal</option>
+                  <option value="paper">Paper</option>
+                  <option value="cardboard">Cardboard</option>
+                  <option value="mixed">Mixed</option>
                 </select>
               </div>
 
@@ -818,7 +822,7 @@ const ContainerManagement = () => {
 
       {/* Deactivate Confirmation Modal */}
       {showDeactivateConfirm && (
-        <div className="fixed inset-0 bg-green-900 bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-green-50 bg-opacity-30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 mx-4">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
