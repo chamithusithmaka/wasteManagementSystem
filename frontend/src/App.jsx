@@ -19,7 +19,7 @@ import ReportVisualizationPage from './pages/ReportVisualizationPage';
 import ContainerDashboard from './pages/ContainerManagement/ContainerDashboard';
 import ContainerManagementDashboard from './pages/ContainerManagement/ContainerManagementDashboard';
 import ContainerForm from './pages/ContainerManagement/ContainerForm';
-import ContainerAssign from './pages/ContainerManagement/ContainerAssign';
+//import ContainerAssign from './pages/ContainerManagement/ContainerAssign';
 import ContainerListPage from './pages/ContainerManagement/ContainerListPage';
 
 import { UserProvider } from './context/UserContext';
@@ -98,11 +98,11 @@ function App() {
               <ContainerForm />
             </AdminLayout>
           } />
-          <Route path="/assign-container" element={
+          {/* <Route path="/assign-container" element={
             <AdminLayout>
               <ContainerAssign />         
             </AdminLayout>
-          } />
+          } /> */}
           <Route path="/container-list" element={
             <AdminLayout>
               <ContainerListPage />

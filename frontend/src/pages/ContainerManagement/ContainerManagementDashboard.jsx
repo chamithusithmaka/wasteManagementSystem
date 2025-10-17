@@ -759,7 +759,7 @@ const ContainerManagement = () => {
                 <button
                   type="submit"
                   disabled={updateLoading}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {updateLoading ? 'Updating...' : 'Update Container'}
                 </button>
@@ -779,7 +779,7 @@ const ContainerManagement = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-green-900 bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-green-50 bg-opacity-30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 mx-4">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
@@ -818,7 +818,7 @@ const ContainerManagement = () => {
 
       {/* Deactivate Confirmation Modal */}
       {showDeactivateConfirm && (
-        <div className="fixed inset-0 bg-green-900 bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-green-50 bg-opacity-30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 mx-4">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
