@@ -19,6 +19,10 @@ import ContainerDashboard from './pages/ContainerManagement/ContainerDashboard';
 import ContainerManagementDashboard from './pages/ContainerManagement/ContainerManagementDashboard';
 import ContainerForm from './pages/ContainerManagement/ContainerForm';
 import ContainerListPage from './pages/ContainerManagement/ContainerListPage';
+import WasteCollectionManagement from './pages/admin/WasteCollectionManagement';
+import WasteCollectionDetails from './pages/admin/WasteCollectionDetails';
+import ContainerManagement from './pages/admin/ContainerManagement';
+import ContainerDetails from './pages/admin/ContainerDetails';
 
 import { UserProvider } from './context/UserContext';
 
@@ -102,6 +106,31 @@ function App() {
           <Route path="/container-list" element={
             <AdminLayout>
               <ContainerListPage />
+            </AdminLayout>
+          } />
+          <Route path="/admin/waste-collection" element={
+            <AdminLayout>
+              <WasteCollectionManagement />
+            </AdminLayout>
+          } />
+          <Route path="/admin/waste-collection/:id" element={
+            <AdminLayout>
+            <WasteCollectionDetails />
+            </AdminLayout>
+            } />
+          <Route path="/admin/containers" element={
+            <AdminLayout>
+            <ContainerManagement />
+            </AdminLayout>} 
+            />
+          <Route path="/admin/containers/full" element={
+            <AdminLayout>
+            <ContainerManagement />
+            </AdminLayout>}
+             />
+          <Route path="/admin/containers/:id" element={
+            <AdminLayout>
+              <ContainerDetails />
             </AdminLayout>
           } />
         </Routes>
