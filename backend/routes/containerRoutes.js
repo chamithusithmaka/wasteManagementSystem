@@ -21,6 +21,8 @@ router.put("/:id", containerController.update);
 router.put("/:id/location", containerController.sendLocation);
 // Check if container has location assigned
 router.get("/:id/location-assigned", containerController.checkLocationAssigned);
+// Schedule collection for a container
+router.put("/:id/schedule-collection", containerController.scheduleCollection);
 // Deactivate container (set to Out of Service)
 router.put("/:id/deactivate", containerController.deactivate);
 router.delete("/:id", containerController.delete);

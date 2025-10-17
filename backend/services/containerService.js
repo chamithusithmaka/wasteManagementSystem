@@ -171,7 +171,15 @@ class ContainerService {
    */
   async updateContainerStatus(containerId, status) {
     // Business logic: Validate status
-    const validStatuses = ['Available', 'Near Full', 'Full', 'Needs Maintenance', 'Out of Service'];
+    const validStatuses = [
+      'Available', 
+      'Near Full', 
+      'Full', 
+      'Needs Maintenance', 
+      'Out of Service',
+      'Scheduled for Collection' // Add this new status
+    ];
+    
     if (!validStatuses.includes(status)) {
       throw new Error(`Status must be one of: ${validStatuses.join(', ')}`);
     }
@@ -351,6 +359,48 @@ class ContainerService {
     // Business logic: Location is considered assigned if both address and city are present
     const location = container.containerLocation;
     return !!(location && location.address && location.city);
+  }
+
+  /**
+   * Schedule a collection for a container
+   * @param {String} id - The container ID (can be MongoDB ObjectId or business containerId)
+   * @returns {Promise<Object|null>} Updated container
+   */
+  async scheduleContainerCollection(id) {
+    let container = null;
+    let isMongoId = false;
+
+    // Check if the id is a MongoDB ObjectId (24 character hex string)
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      // Try to find by MongoDB _id first
+      container = await containerRepository.findById(id);
+      isMongoId = true;
+    } else {
+      // Try to find by business containerId
+      container = await containerRepository.findByContainerId(id);
+    }
+
+    if (!container) {
+      throw new Error(`Container ${id} not found`);
+    }
+
+    // Set collection schedule date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0); // 9 AM
+
+    // Update the container with the collection schedule AND change status
+    const updateData = {
+      collectionSchedule: tomorrow,
+      status: 'Scheduled for Collection'  // Update status to indicate scheduled collection
+    };
+
+    // Update based on the ID type
+    if (isMongoId) {
+      return await containerRepository.updateById(id, updateData);
+    } else {
+      return await containerRepository.updateByContainerId(id, updateData);
+    }
   }
 }
 

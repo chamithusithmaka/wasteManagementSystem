@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import './App.css';
@@ -9,7 +8,6 @@ import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import SchedulePickup from './pages/Waste-collection/SchedulePickup'; // added route component
-import AdminDashboard from './pages/AdminDashboard';
 import WasteCollection from './pages/Waste-collection/WasteCollection';
 import WasteLevel from './pages/WasteLevel';
 import Payments from './pages/Payments';
@@ -60,20 +58,11 @@ function App() {
               <Profile />
             </Layout>
           } />
-          <Route path="/report-generation" element={
-            <AdminLayout>
-              <ReportGenerationPage />
-            </AdminLayout>
-          } />
-          <Route path="/report-visualization" element={
-            <AdminLayout>
-              <ReportVisualizationPage />
-            </AdminLayout>
-          } />
+          
+          {/* Admin routes - use nested routes under /admin */}
+          <Route path="/admin/*" element={<AdminLayout />} />
           <Route path="/admin-dashboard" element={
-            <AdminLayout>
-              <AdminDashboard />
-            </AdminLayout>
+            <AdminLayout />
           } />
           <Route path="/schedule" element={
             <Layout>
@@ -103,7 +92,6 @@ function App() {
             </AdminLayout>
           } />
         </Routes>
-
       </BrowserRouter>
     </UserProvider>
   );
