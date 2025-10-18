@@ -171,6 +171,33 @@ class WasteCollectionController {
     }
   }
 
+  // Cancel a pickup with time restriction (user only)
+  static async cancelPickupWithTimeRestriction(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user._id;
+      
+      try {
+        const cancelledPickup = await WasteCollectionService.cancelPickupWithTimeRestriction(id, userId);
+        
+        return res.status(200).json({
+          message: 'Pickup cancelled successfully',
+          pickup: cancelledPickup
+        });
+      } catch (err) {
+        // Return specific error messages to the client
+        return res.status(400).json({
+          message: err.message
+        });
+      }
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Failed to cancel pickup',
+        error: err.message
+      });
+    }
+  }
+
   // Get user stats
   static async getUserStats(req, res) {
     try {

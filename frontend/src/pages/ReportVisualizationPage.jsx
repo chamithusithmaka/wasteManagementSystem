@@ -1,45 +1,124 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Papa from 'papaparse';
+import { fetchReportData, fetchStatusCounts, fetchTypeCounts } from '../services/reportService';
+
+// Helper: Modal
+const Modal = ({ open, onClose, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in">
+        <button
+          className="absolute top-4 right-4 text-green-700 text-xl font-bold"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// Helper: BarChart
+const BarChart = ({ entries, max, labelKey, valueKey, labelTitle }) => (
+  <div className="bg-green-100 rounded-xl p-6 shadow">
+    <h2 className="text-xl font-bold text-green-700 mb-4">{labelTitle}</h2>
+    <div className="space-y-3">
+      {entries.map(([label, value], idx) => (
+        <div key={label} className="flex items-center gap-4">
+          <div className="w-32 text-sm font-semibold text-green-700">{label}</div>
+          <div className="flex-1 bg-white rounded overflow-hidden h-6">
+            <div
+              className="h-6 bg-gradient-to-r from-green-400 to-green-700"
+              style={{ width: `${(value / max) * 100}%` }}
+            />
+          </div>
+          <div className="w-12 text-right text-green-900 font-bold">{value}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Helper: PieChart
+const PieChart = ({ entries, total, describeArc, colors, title }) => (
+  <div className="bg-green-100 rounded-xl p-6 shadow flex flex-col items-center">
+    <h2 className="text-xl font-bold text-green-700 mb-4">{title}</h2>
+    {entries.length > 0 ? (
+      <>
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          {(() => {
+            let start = 0;
+            return entries.map(([type, count], i) => {
+              const slice = (count / total) * 360;
+              const path = describeArc(100, 100, 80, start, start + slice);
+              start += slice;
+              return <path key={type} d={path} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="1" />;
+            });
+          })()}
+        </svg>
+        <div className="mt-4 grid grid-cols-2 gap-2 w-full">
+          {entries.map(([type, count], i) => (
+            <div key={type} className="flex items-center gap-2 justify-between">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: colors[i % colors.length] }}></span>
+              <span className="text-green-700 text-sm font-semibold mr-5">{type}</span>
+              <span className="text-gray-600 text-xs mr-15">{count}</span>
+            </div>
+          ))}
+        </div>
+      </>
+    ) : (
+      <div className="h-64 flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <div className="text-4xl mb-2">📊</div>
+          <div>No {title.toLowerCase().replace('distribution', '').trim()} data available</div>
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 const ReportVisualizationPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = location.state || {};
   const reportType = params.reportType || 'Waste Collection Summary';
+
+  // State
   const [reportData, setReportData] = useState(null);
   const [statusCounts, setStatusCounts] = useState(null);
   const [typeCounts, setTypeCounts] = useState(null);
-  const [loadingData, setLoadingData] = useState(true);
-  const [loadingStatus, setLoadingStatus] = useState(true);
-  const [loadingTypes, setLoadingTypes] = useState(true);
+  const [loading, setLoading] = useState({ data: true, status: true, types: true });
   const [error, setError] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [exportFormat, setExportFormat] = useState('');
   const [feedback, setFeedback] = useState('Report generated successfully!');
-  const reportRef = React.useRef();
+  const reportRef = useRef();
 
-    // CSV Export
-  const handleExportCSV = () => {
+
+  // CSV Export
+  const handleExportCSV = useCallback(() => {
     setExporting(true);
     setExportFormat('CSV');
-    
-    // Prepare CSV data from both status and type counts
+    // Use the latest statusEntries and typeEntries from state
+    const statusEntriesLocal = statusCounts?.counts ? Object.entries(statusCounts.counts) : [];
+    const typeEntriesLocal = typeCounts?.counts ? Object.entries(typeCounts.counts) : [];
     const csvRows = [
       ['Category', 'Type', 'Count'],
-      ...statusEntries.map(([status, count]) => ['Status', status, count]),
-      ...typeEntries.map(([type, count]) => [
-        reportType === 'Sensor Data' ? 'Container Type' : 'Waste Type', 
-        type, 
+      ...statusEntriesLocal.map(([status, count]) => ['Status', status, count]),
+      ...typeEntriesLocal.map(([type, count]) => [
+        reportType === 'Sensor Data' ? 'Container Type' : 'Waste Type',
+        type,
         count
       ])
     ];
-    
     const csv = Papa.unparse(csvRows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -52,88 +131,57 @@ const ReportVisualizationPage = () => {
       setExporting(false);
       setExportSuccess(true);
     }, 1200);
-  };
+  }, [statusCounts, typeCounts, reportType]);
 
   useEffect(() => {
-    // Fetch report data from backend
-    console.log('[ReportVisualization] sending request to /api/reports/generate with params:', params);
-    setLoadingData(true);
+    setLoading((l) => ({ ...l, data: true }));
     setError(null);
-    fetch('http://localhost:5000/api/reports/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    })
-      .then((res) => {
-        console.log('[ReportVisualization] response status:', res.status);
-        return res.json();
-      })
-      .then((data) => {
-        console.log('[ReportVisualization] response body:', data);
-        setReportData(data.data);
-        setLoadingData(false);
-      })
-      .catch((err) => {
-        console.error('[ReportVisualization] fetch error:', err);
+    (async () => {
+      try {
+        const data = await fetchReportData(params);
+        setReportData(data);
+        setLoading((l) => ({ ...l, data: false }));
+      } catch (err) {
         setFeedback('Failed to load report data');
         setError(err?.message || 'Failed to fetch');
-        setLoadingData(false);
-      });
+        setLoading((l) => ({ ...l, data: false }));
+      }
+    })();
   }, [params]);
 
   useEffect(() => {
-    // Fetch status counts from backend - conditional based on report type
-    setLoadingStatus(true);
-    
-    // Choose API endpoint based on report type
-    const statusCountsUrl = reportType === 'Sensor Data' 
-      ? 'http://localhost:5000/api/reports/sensor-status-counts'
-      : 'http://localhost:5000/api/reports/status-counts';
-    
-    fetch(statusCountsUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        setStatusCounts(data.data);
-        setLoadingStatus(false);
-      })
-      .catch((err) => {
-        console.error('[ReportVisualization] status counts fetch error:', err);
-        setLoadingStatus(false);
-      });
+    setLoading((l) => ({ ...l, status: true }));
+    (async () => {
+      try {
+        const data = await fetchStatusCounts(reportType);
+        setStatusCounts(data);
+        setLoading((l) => ({ ...l, status: false }));
+      } catch (err) {
+        setLoading((l) => ({ ...l, status: false }));
+      }
+    })();
   }, [reportType]);
 
   useEffect(() => {
-    // Fetch type counts from backend - conditional based on report type
-    setLoadingTypes(true);
-    
-    // Choose API endpoint based on report type
-    const typeCountsUrl = reportType === 'Sensor Data' 
-      ? 'http://localhost:5000/api/reports/container-type-counts'
-      : 'http://localhost:5000/api/reports/waste-type-counts';
-    
-    fetch(typeCountsUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('[ReportVisualization] type counts response:', data);
-        setTypeCounts(data.data);
-        setLoadingTypes(false);
-      })
-      .catch((err) => {
-        console.error('[ReportVisualization] type counts fetch error:', err);
-        setLoadingTypes(false);
-      });
+    setLoading((l) => ({ ...l, types: true }));
+    (async () => {
+      try {
+        const data = await fetchTypeCounts(reportType);
+        setTypeCounts(data);
+        setLoading((l) => ({ ...l, types: false }));
+      } catch (err) {
+        setLoading((l) => ({ ...l, types: false }));
+      }
+    })();
   }, [reportType]);
 
-  // Helpers for charts (use statusCounts from backend API)
-  const statusEntries = statusCounts?.counts ? Object.entries(statusCounts.counts) : [];
-  const totalStatus = statusCounts?.total || statusEntries.reduce((s, [, c]) => s + c, 0);
-  const maxStatus = statusEntries.reduce((m, [, c]) => Math.max(m, c), 0) || 1;
 
-  // Helpers for type distribution charts (use typeCounts from backend API)
+  // Chart helpers
+  const statusEntries = statusCounts?.counts ? Object.entries(statusCounts.counts) : [];
+  const maxStatus = statusEntries.reduce((m, [, c]) => Math.max(m, c), 0) || 1;
   const typeEntries = typeCounts?.counts ? Object.entries(typeCounts.counts) : [];
   const totalTypes = typeCounts?.total || typeEntries.reduce((s, [, c]) => s + c, 0);
-
-  // pie slice path generator
+  const colors = ['#22c55e', '#a3e635', '#fbbf24', '#38bdf8', '#f87171', '#a78bfa'];
   const polarToCartesian = (cx, cy, r, angleDeg) => {
     const angleRad = ((angleDeg - 90) * Math.PI) / 180.0;
     return {
@@ -141,7 +189,6 @@ const ReportVisualizationPage = () => {
       y: cy + r * Math.sin(angleRad),
     };
   };
-
   const describeArc = (cx, cy, r, startAngle, endAngle) => {
     const start = polarToCartesian(cx, cy, r, endAngle);
     const end = polarToCartesian(cx, cy, r, startAngle);
@@ -149,10 +196,11 @@ const ReportVisualizationPage = () => {
     return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} L ${cx} ${cy} Z`;
   };
 
-  const colors = ['#22c55e', '#a3e635', '#fbbf24', '#38bdf8', '#f87171', '#a78bfa'];
 
-  if (loadingData || loadingStatus || loadingTypes) {
-    return (
+
+  let content = null;
+  if (loading.data || loading.status || loading.types) {
+    content = (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
@@ -160,10 +208,8 @@ const ReportVisualizationPage = () => {
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return (
+  } else if (error) {
+    content = (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-white p-6 rounded-lg shadow text-center">
           <h3 className="text-lg font-bold text-red-600 mb-2">Failed to load report</h3>
@@ -171,25 +217,17 @@ const ReportVisualizationPage = () => {
           <div className="flex gap-2 justify-center">
             <button
               className="px-4 py-2 bg-green-600 text-white rounded"
-              onClick={() => {
-                // retry
-                setLoadingData(true);
+              onClick={async () => {
+                setLoading((l) => ({ ...l, data: true }));
                 setError(null);
-                // trigger effect by re-setting params (navigate state unchanged) - quick approach: call fetch manually
-                fetch('http://localhost:5000/api/reports/generate', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(params),
-                })
-                  .then((r) => r.json())
-                  .then((d) => {
-                    setReportData(d.data);
-                    setLoadingData(false);
-                  })
-                  .catch((e) => {
-                    setError(e.message || 'Retry failed');
-                    setLoadingData(false);
-                  });
+                try {
+                  const data = await fetchReportData(params);
+                  setReportData(data);
+                  setLoading((l) => ({ ...l, data: false }));
+                } catch (e) {
+                  setError(e.message || 'Retry failed');
+                  setLoading((l) => ({ ...l, data: false }));
+                }
               }}
             >
               Retry
@@ -201,183 +239,112 @@ const ReportVisualizationPage = () => {
     );
   }
 
+
   // PDF Export
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(() => {
     if (!reportRef.current) {
       alert('Report reference not found');
       return;
     }
-
     setExporting(true);
     setExportFormat('PDF');
-
-    try {
-      console.log('Starting PDF export...');
-
-      const element = reportRef.current;
-      console.log('Element dimensions:', element.offsetWidth, 'x', element.offsetHeight);
-
-      // Wait a moment for the loading state to show
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const canvas = await html2canvas(element, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        height: element.scrollHeight,
-        width: element.scrollWidth,
-        scrollX: 0,
-        scrollY: 0,
-        ignoreElements: (element) => {
-          // Skip the modal overlay and action buttons during capture
-          return (
-            element.classList.contains('fixed') ||
-            element.classList.contains('backdrop-blur') ||
-            element.classList.contains('animate-') ||
-            element.style.backdropFilter ||
-            element.closest('.fixed') ||
-            element.id === 'action-buttons' ||
-            element.closest('#action-buttons')
-          );
-        },
-        onclone: (clonedDoc) => {
-          // Remove the modal and action buttons from cloned document
-          const modals = clonedDoc.querySelectorAll('.fixed');
-          modals.forEach((modal) => modal.remove());
-
-          const actionButtons = clonedDoc.querySelector('#action-buttons');
-          if (actionButtons) {
-            actionButtons.remove();
-          }
-
-          // Improve PDF-specific styling (force hex/rgb colors, remove all filter/backdrop/color-function usage)
-          const style = clonedDoc.createElement('style');
-          style.textContent = `
-            * {
-              backdrop-filter: none !important;
-              filter: none !important;
-              color: #222 !important;
-              background: none !important;
-              box-shadow: none !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            body {
-              font-family: 'Arial', 'Helvetica', sans-serif !important;
-              line-height: 1.4 !important;
-              background: #fff !important;
-            }
-            .bg-green-50 { background-color: #f0fdf4 !important; }
-            .bg-green-100 { background-color: #dcfce7 !important; }
-            .bg-green-200 { background-color: #bbf7d0 !important; }
-            .bg-green-300 { background-color: #86efac !important; }
-            .bg-green-400 { background-color: #4ade80 !important; }
-            .bg-green-500 { background-color: #22c55e !important; }
-            .bg-green-600 { background-color: #16a34a !important; }
-            .bg-green-700 { background-color: #15803d !important; }
-            .bg-green-800 { background-color: #166534 !important; }
-            .bg-green-900 { background-color: #14532d !important; }
-            .text-green-700 { color: #15803d !important; }
-            .text-green-900 { color: #14532d !important; }
-            .text-gray-600 { color: #4b5563 !important; }
-            .text-white { color: #ffffff !important; }
-            .border-green-200 { border-color: #bbf7d0 !important; }
-            h1, h2, h3 {
-              font-weight: bold !important;
-              margin-bottom: 8px !important;
-            }
-            h1 {
-              font-size: 24px !important;
-              text-align: center !important;
-              margin-bottom: 16px !important;
-              padding: 12px !important;
-              border-bottom: 3px solid #15803d !important;
-            }
-            h2 {
-              font-size: 18px !important;
-              margin-bottom: 12px !important;
-            }
-            .rounded-xl, .rounded-2xl {
-              border-radius: 8px !important;
-              border: 1px solid #bbf7d0 !important;
-            }
-            .shadow, .shadow-lg, .shadow-xl, .shadow-2xl {
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            }
-            table {
-              border-collapse: collapse !important;
-              width: 100% !important;
-            }
-            td, th {
-              border: 1px solid #bbf7d0 !important;
-              padding: 8px !important;
-              text-align: left !important;
-            }
-            .grid {
-              display: grid !important;
-              gap: 16px !important;
-            }
-            .grid-cols-1 {
-              grid-template-columns: 1fr !important;
-            }
-            .grid-cols-2 {
-              grid-template-columns: 1fr 1fr !important;
-            }
-            @media print {
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-        },
-      });
-
-      console.log('Canvas created:', canvas.width, 'x', canvas.height);
-
-      const imgData = canvas.toDataURL('image/png', 1.0);
-
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      // If content is taller than one page, handle multiple pages
-      if (imgHeight > pdfHeight) {
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        // Add first page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
+    (async () => {
+      try {
+        const element = reportRef.current;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          height: element.scrollHeight,
+          width: element.scrollWidth,
+          scrollX: 0,
+          scrollY: 0,
+          ignoreElements: (el) => (
+            el.classList.contains('fixed') ||
+            el.classList.contains('backdrop-blur') ||
+            el.classList.contains('animate-') ||
+            el.style.backdropFilter ||
+            el.closest('.fixed') ||
+            el.id === 'action-buttons' ||
+            el.closest('#action-buttons')
+          ),
+          onclone: (clonedDoc) => {
+            const modals = clonedDoc.querySelectorAll('.fixed');
+            modals.forEach((modal) => modal.remove());
+            const actionButtons = clonedDoc.querySelector('#action-buttons');
+            if (actionButtons) actionButtons.remove();
+            const style = clonedDoc.createElement('style');
+            style.textContent = `
+              * { backdrop-filter: none !important; filter: none !important; color: #222 !important; background: none !important; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              body { font-family: 'Arial', 'Helvetica', sans-serif !important; line-height: 1.4 !important; background: #fff !important; }
+              .bg-green-50 { background-color: #f0fdf4 !important; }
+              .bg-green-100 { background-color: #dcfce7 !important; }
+              .bg-green-200 { background-color: #bbf7d0 !important; }
+              .bg-green-300 { background-color: #86efac !important; }
+              .bg-green-400 { background-color: #4ade80 !important; }
+              .bg-green-500 { background-color: #22c55e !important; }
+              .bg-green-600 { background-color: #16a34a !important; }
+              .bg-green-700 { background-color: #15803d !important; }
+              .bg-green-800 { background-color: #166534 !important; }
+              .bg-green-900 { background-color: #14532d !important; }
+              .text-green-700 { color: #15803d !important; }
+              .text-green-900 { color: #14532d !important; }
+              .text-gray-600 { color: #4b5563 !important; }
+              .text-white { color: #ffffff !important; }
+              .border-green-200 { border-color: #bbf7d0 !important; }
+              h1, h2, h3 { font-weight: bold !important; margin-bottom: 8px !important; }
+              h1 { font-size: 24px !important; text-align: center !important; margin-bottom: 16px !important; padding: 12px !important; border-bottom: 3px solid #15803d !important; }
+              h2 { font-size: 18px !important; margin-bottom: 12px !important; }
+              .rounded-xl, .rounded-2xl { border-radius: 8px !important; border: 1px solid #bbf7d0 !important; }
+              .shadow, .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; }
+              table { border-collapse: collapse !important; width: 100% !important; }
+              td, th { border: 1px solid #bbf7d0 !important; padding: 8px !important; text-align: left !important; }
+              .grid { display: grid !important; gap: 16px !important; }
+              .grid-cols-1 { grid-template-columns: 1fr !important; }
+              .grid-cols-2 { grid-template-columns: 1fr 1fr !important; }
+              @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+            `;
+            clonedDoc.head.appendChild(style);
+          },
+        });
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        if (imgHeight > pdfHeight) {
+          let heightLeft = imgHeight;
+          let position = 0;
           pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
           heightLeft -= pdfHeight;
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
+          }
+        } else {
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         }
-      } else {
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      }
-
-      pdf.save('waste-report.pdf');
-      setTimeout(() => {
+        pdf.save('waste-report.pdf');
+        setTimeout(() => {
+          setExporting(false);
+          setExportSuccess(true);
+        }, 1200);
+      } catch (err) {
         setExporting(false);
-        setExportSuccess(true);
-      }, 1200);
-    } catch (err) {
-      setExporting(false);
-      setExportSuccess(false);
-      setShowExportModal(false);
-      alert('Failed to export PDF: ' + (err?.message || err));
-    }
-  };
+        setExportSuccess(false);
+        setShowExportModal(false);
+        alert('Failed to export PDF: ' + (err?.message || err));
+      }
+    })();
+  }, [reportRef]);
+
+  if (content) return content;
 
   return (
     <div className="min-h-screen bg-green-50 py-10 px-4">
@@ -390,67 +357,22 @@ const ReportVisualizationPage = () => {
             {feedback}
           </div>
         )}
-        {/* ...existing code... */}
-        {/* ...existing code... */}
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Bar Chart (status counts) */}
-          <div className="bg-green-100 rounded-xl p-6 shadow">
-            <h2 className="text-xl font-bold text-green-700 mb-4">
-              {reportType === 'Sensor Data' ? 'Containers by Status' : 'Collections by Status'}
-            </h2>
-            <div className="space-y-3">
-              {statusEntries.map(([status, count], idx) => (
-                <div key={status} className="flex items-center gap-4">
-                  <div className="w-32 text-sm font-semibold text-green-700">{status}</div>
-                  <div className="flex-1 bg-white rounded overflow-hidden h-6">
-                    <div
-                      className="h-6 bg-gradient-to-r from-green-400 to-green-700"
-                      style={{ width: `${(count / maxStatus) * 100}%` }}
-                    />
-                  </div>
-                  <div className="w-12 text-right text-green-900 font-bold">{count}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Type Distribution Pie Chart */}
-          <div className="bg-green-100 rounded-xl p-6 shadow flex flex-col items-center">
-            <h2 className="text-xl font-bold text-green-700 mb-4">
-              {reportType === 'Sensor Data' ? 'Container Type Distribution' : 'Waste Type Distribution'}
-            </h2>
-            {typeEntries.length > 0 ? (
-              <>
-                <svg width="200" height="200" viewBox="0 0 200 200">
-                  {(() => {
-                    let start = 0;
-                    return typeEntries.map(([type, count], i) => {
-                      const slice = (count / totalTypes) * 360;
-                      const path = describeArc(100, 100, 80, start, start + slice);
-                      start += slice;
-                      return <path key={type} d={path} fill={colors[i % colors.length]} stroke="#fff" strokeWidth="1" />;
-                    });
-                  })()}
-                </svg>
-                <div className="mt-4 grid grid-cols-2 gap-2 w-full">
-                  {typeEntries.map(([type, count], i) => (
-                    <div key={type} className="flex items-center gap-2 justify-between">
-                      <span className="inline-block w-3 h-3 rounded-full" style={{ background: colors[i % colors.length] }}></span>
-                      <span className="text-green-700 text-sm font-semibold mr-5">{type}</span>
-                      <span className="text-gray-600 text-xs mr-15">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <div className="text-center">
-                  <div className="text-4xl mb-2">📊</div>
-                  <div>No {reportType === 'Sensor Data' ? 'container type' : 'waste type'} data available</div>
-                </div>
-              </div>
-            )}
-          </div>
+          <BarChart
+            entries={statusEntries}
+            max={maxStatus}
+            labelKey="status"
+            valueKey="count"
+            labelTitle={reportType === 'Sensor Data' ? 'Containers by Status' : 'Collections by Status'}
+          />
+          <PieChart
+            entries={typeEntries}
+            total={totalTypes}
+            describeArc={describeArc}
+            colors={colors}
+            title={reportType === 'Sensor Data' ? 'Container Type Distribution' : 'Waste Type Distribution'}
+          />
         </div>
 
         {/* Key Statistics Table (from backend) - conditional by report type */}
@@ -530,81 +452,68 @@ const ReportVisualizationPage = () => {
           >
             Export Report
           </button>
-          {/* Export & Confirmation Modal */}
-          {showExportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
-              <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in">
+          <Modal open={showExportModal} onClose={() => setShowExportModal(false)}>
+            <h2 className="text-2xl font-bold text-green-700 mb-4 text-center">Choose export format</h2>
+            {!exporting && !exportSuccess && (
+              <div className="flex flex-col gap-4 items-center">
                 <button
-                  className="absolute top-4 right-4 text-green-700 text-xl font-bold"
-                  onClick={() => setShowExportModal(false)}
+                  className="w-full py-3 rounded-lg bg-green-800 text-white font-bold text-lg shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
+                  onClick={handleExportPDF}
                 >
-                  &times;
+                  Export to PDF
                 </button>
-                <h2 className="text-2xl font-bold text-green-700 mb-4 text-center">
-                  Choose export format
-                </h2>
-                {!exporting && !exportSuccess && (
-                  <div className="flex flex-col gap-4 items-center">
-                    <button
-                      className="w-full py-3 rounded-lg bg-green-800 text-white font-bold text-lg shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
-                      onClick={handleExportPDF}
-                    >
-                      Export to PDF
-                    </button>
-                    <button
-                      className="w-full py-3 rounded-lg bg-green-800 text-white font-bold text-lg shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
-                      onClick={handleExportCSV}
-                    >
-                      Export to CSV
-                    </button>
-                  </div>
-                )}
-                {exporting && (
-                  <div className="mt-6 flex flex-col items-center">
-                    <span className="text-green-700 font-semibold mb-2">
-                      Exporting to {exportFormat}...
-                    </span>
-                    <div className="w-full bg-green-100 rounded-full h-4 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-green-400 to-green-700 h-4 animate-progress-bar"
-                        style={{ width: '100%' }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-                {exportSuccess && (
-                  <div className="mt-6 flex flex-col items-center">
-                    <svg
-                      className="h-10 w-10 text-green-600 mb-2 animate-bounce"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 12l2 2 4-4"
-                      />
-                    </svg>
-                    <span className="text-green-700 font-bold text-lg mb-2">
-                      Report successfully exported!
-                    </span>
-                    <button
-                      className="mt-2 px-6 py-2 rounded-lg bg-green-800 text-white font-bold shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
-                      onClick={() => {
-                        setShowExportModal(false);
-                        setExportSuccess(false);
-                        setExportFormat('');
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                )}
+                <button
+                  className="w-full py-3 rounded-lg bg-green-800 text-white font-bold text-lg shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
+                  onClick={handleExportCSV}
+                >
+                  Export to CSV
+                </button>
               </div>
-            </div>
-          )}
+            )}
+            {exporting && (
+              <div className="mt-6 flex flex-col items-center">
+                <span className="text-green-700 font-semibold mb-2">
+                  Exporting to {exportFormat}...
+                </span>
+                <div className="w-full bg-green-100 rounded-full h-4 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-green-400 to-green-700 h-4 animate-progress-bar"
+                    style={{ width: '100%' }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            {exportSuccess && (
+              <div className="mt-6 flex flex-col items-center">
+                <svg
+                  className="h-10 w-10 text-green-600 mb-2 animate-bounce"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12l2 2 4-4"
+                  />
+                </svg>
+                <span className="text-green-700 font-bold text-lg mb-2">
+                  Report successfully exported!
+                </span>
+                <button
+                  className="mt-2 px-6 py-2 rounded-lg bg-green-800 text-white font-bold shadow transition duration-200 hover:scale-105 hover:shadow-xl hover:bg-green-900 focus:outline-none focus:ring-4 focus:ring-green-300"
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setExportSuccess(false);
+                    setExportFormat('');
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </Modal>
         </div>
       </div>
     </div>

@@ -23,7 +23,8 @@ class WasteCollectionService {
   // Get pickup by ID
   static async getPickupById(pickupId) {
     try {
-      return await WasteCollectionRepository.findById(pickupId);
+      // Use populate to include user details from the User model
+      return await WasteCollectionRepository.findByIdWithUserDetails(pickupId);
     } catch (error) {
       throw error;
     }
@@ -41,6 +42,39 @@ class WasteCollectionService {
   // Cancel pickup
   static async cancelPickup(pickupId) {
     try {
+      return await WasteCollectionRepository.updateById(pickupId, { status: 'Cancelled' });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Cancel pickup with time restriction
+  static async cancelPickupWithTimeRestriction(pickupId, userId) {
+    try {
+      const pickup = await WasteCollectionRepository.findById(pickupId);
+      
+      if (!pickup) {
+        throw new Error('Pickup not found');
+      }
+      
+      // Check if pickup belongs to the user
+      if (pickup.userId.toString() !== userId.toString()) {
+        throw new Error('Not authorized to cancel this pickup');
+      }
+      
+      // Check if pickup is in a cancellable status
+      if (pickup.status !== 'Scheduled' && pickup.status !== 'Pending') {
+        throw new Error(`Cannot cancel a pickup that is already ${pickup.status}`);
+      }
+      
+      // Check if pickup was created within the last 2 hours
+      const createdAt = pickup.createdAt || pickup._id.getTimestamp();
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      
+      if (createdAt < twoHoursAgo) {
+        throw new Error('Pickup can only be cancelled within 2 hours of creation');
+      }
+      
       return await WasteCollectionRepository.updateById(pickupId, { status: 'Cancelled' });
     } catch (error) {
       throw error;

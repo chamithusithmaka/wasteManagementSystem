@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
     BASE: `${API_BASE_URL}/waste-collection`,
     SCHEDULE: `${API_BASE_URL}/waste-collection/schedule`,
     GET_ALL: `${API_BASE_URL}/waste-collection`,
+    CANCEL_WITH_RESTRICTION: (id) => `${API_BASE_URL}/waste-collection/${id}/cancel-with-restriction`,
   },
 };
 
