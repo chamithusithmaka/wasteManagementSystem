@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import WasteCollectionService from '../../services/wasteCollectionService';
 
 const WasteCollectionDetails = () => {
   const { id } = useParams();
@@ -12,33 +13,26 @@ const WasteCollectionDetails = () => {
     const fetchPickupDetails = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Simulate API call with setTimeout
-        setTimeout(() => {
-          // Mock data for pickup details
-          const mockPickup = {
-            _id: id,
-            confirmationId: `WP-${1000 + parseInt(id)}`,
-            userId: 'user123',
-            userName: 'John Doe',
-            userPhone: '555-1234',
-            scheduledDate: '2025-10-20',
-            scheduledTime: '09:00-11:00',
-            wasteType: 'General Waste',
-            wasteDescription: 'Household waste, kitchen waste',
-            address: '123 Main Street, Downtown',
-            province: 'Western',
-            containerFillLevel: 85,
-            specialInstructions: 'Please enter through the side gate.',
-            status: 'Scheduled',
-            assignedStaff: null,
-            createdAt: '2025-10-15T10:30:00.000Z'
-          };
-          
-          setPickup(mockPickup);
-          setLoading(false);
-        }, 1000);
+        // Fetch real data from API
+        const pickupData = await WasteCollectionService.getPickup(id);
         
+        // Process the data, extracting user details from populated userId field
+        const userData = pickupData.userId || {};
+        
+        setPickup({
+          ...pickupData,
+          // Use the populated user data
+          userName: userData.name || pickupData.userName || 'Not available',
+          userPhone: userData.phone || pickupData.userPhone || 'Not available',
+          userEmail: userData.email || 'Not available',
+          userId: userData._id || pickupData.userId || 'Not available',
+          wasteDescription: pickupData.notes || 'No description provided',
+          specialInstructions: pickupData.specialInstructions || pickupData.notes || ''
+        });
+        
+        setLoading(false);
       } catch (err) {
         console.error('Error fetching pickup details:', err);
         setError('Failed to load pickup details. Please try again.');
@@ -49,39 +43,58 @@ const WasteCollectionDetails = () => {
     fetchPickupDetails();
   }, [id]);
 
-  const handleStatusUpdate = (newStatus) => {
-    // Update status in the UI immediately (optimistic update)
-    setPickup(prev => ({
-      ...prev,
-      status: newStatus
-    }));
-    
-    // In a real app, you'd call an API here
-    // For now, just simulate success
-    setTimeout(() => {
-      alert(`Status updated to ${newStatus}`);
-    }, 500);
-  };
-
-  const handleAssignStaff = () => {
-    const staffName = prompt('Enter staff name:');
-    if (staffName) {
+  const handleStatusUpdate = async (newStatus) => {
+    try {
+      // Update status in the UI immediately (optimistic update)
       setPickup(prev => ({
         ...prev,
-        assignedStaff: staffName,
-        status: 'In Progress'
+        status: newStatus
       }));
+      
+      // Call the API to update the status
+      await WasteCollectionService.updatePickup(id, { status: newStatus });
+      
+      // Show success message
+      alert(`Status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      // Revert UI changes if update failed
+      setPickup(prev => ({ ...prev }));
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  const handleAssignStaff = async () => {
+    const staffName = prompt('Enter staff name:');
+    if (staffName) {
+      try {
+        // Optimistic update
+        setPickup(prev => ({
+          ...prev,
+          assignedStaff: staffName,
+          status: 'In Progress'
+        }));
+        
+        // Call API to update
+        await WasteCollectionService.assignStaff(id, staffName);
+      } catch (error) {
+        console.error('Error assigning staff:', error);
+        // Revert UI changes if update failed
+        setPickup(prev => ({ ...prev }));
+        alert('Failed to assign staff. Please try again.');
+      }
     }
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Not scheduled';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex justify-center items-center h-64" role="status">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-500"></div>
       </div>
     );
@@ -131,7 +144,7 @@ const WasteCollectionDetails = () => {
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-semibold text-green-700">
-              Confirmation #{pickup.confirmationId}
+              Confirmation #{pickup.confirmationId || 'Not assigned'}
             </h2>
             <p className="text-sm text-gray-500">
               Created on {formatDate(pickup.createdAt)}
@@ -145,6 +158,7 @@ const WasteCollectionDetails = () => {
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Customer Information</h3>
             <div className="space-y-2">
               <p><span className="font-medium text-gray-700">Name:</span> {pickup.userName}</p>
+              <p><span className="font-medium text-gray-700">User ID:</span> {pickup.userId}</p>
               <p><span className="font-medium text-gray-700">Phone:</span> {pickup.userPhone}</p>
             </div>
 
@@ -154,11 +168,11 @@ const WasteCollectionDetails = () => {
               <p><span className="font-medium text-gray-700">Time Window:</span> {pickup.scheduledTime}</p>
               <p><span className="font-medium text-gray-700">Waste Type:</span> {pickup.wasteType}</p>
               <p><span className="font-medium text-gray-700">Description:</span> {pickup.wasteDescription}</p>
-              <p><span className="font-medium text-gray-700">Container Fill Level:</span> {pickup.containerFillLevel}%</p>
+              <p><span className="font-medium text-gray-700">Container Fill Level:</span> {pickup.containerFillLevel || 0}%</p>
               <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mt-1">
                 <div 
-                  className={`h-full ${pickup.containerFillLevel > 90 ? 'bg-red-500' : pickup.containerFillLevel > 70 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                  style={{ width: `${pickup.containerFillLevel}%` }}
+                  className={`h-full ${(pickup.containerFillLevel || 0) > 90 ? 'bg-red-500' : (pickup.containerFillLevel || 0) > 70 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                  style={{ width: `${pickup.containerFillLevel || 0}%` }}
                 ></div>
               </div>
             </div>
@@ -180,6 +194,18 @@ const WasteCollectionDetails = () => {
                   <span className="text-gray-400 italic"> Not assigned</span>
                 )}
               </p>
+              {pickup.completedAt && (
+                <p>
+                  <span className="font-medium text-gray-700">Completed On:</span> 
+                  {formatDate(pickup.completedAt)}
+                </p>
+              )}
+              {pickup.wasteAmount && (
+                <p>
+                  <span className="font-medium text-gray-700">Waste Amount:</span> 
+                  {pickup.wasteAmount} kg
+                </p>
+              )}
             </div>
             
             {/* Location map placeholder */}
@@ -236,7 +262,8 @@ const StatusBadge = ({ status }) => {
     Scheduled: 'bg-blue-100 text-blue-800',
     'In Progress': 'bg-yellow-100 text-yellow-800',
     Completed: 'bg-green-100 text-green-800',
-    Cancelled: 'bg-red-100 text-red-800'
+    Cancelled: 'bg-red-100 text-red-800',
+    Pending: 'bg-purple-100 text-purple-800'
   };
   
   // Use default style if status doesn't match

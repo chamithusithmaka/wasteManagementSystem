@@ -34,7 +34,7 @@ class WasteCollectionRepository {
    * @returns {Promise<Object|null>} Waste collection document or null
    */
   static async findById(pickupId) {
-    return await WasteCollection.findById(pickupId);
+    return await WasteCollection.findById(pickupId).exec();
   }
 
   /**
@@ -92,6 +92,20 @@ class WasteCollectionRepository {
    */
   static async aggregate(pipeline) {
     return await WasteCollection.aggregate(pipeline);
+  }
+
+  /**
+   * Find a waste collection by its ID with user details populated
+   * @param {string} pickupId - The pickup ID
+   * @returns {Promise<Object|null>} Waste collection document with user details or null
+   */
+  static async findByIdWithUserDetails(pickupId) {
+    return await WasteCollection.findById(pickupId)
+      .populate({
+        path: 'userId',
+        select: 'name username email phone address province'  // Select only needed fields
+      })
+      .exec();
   }
 }
 
